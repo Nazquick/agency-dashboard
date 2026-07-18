@@ -88,7 +88,7 @@ export default async function ClientsPage() {
           })}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-12 text-center">
+        <div className="rounded-lg border border-dashed bg-card p-12 text-center">
           <p className="text-sm text-muted-foreground">
             No clients yet. {`"New Client"`} to add your first one.
           </p>

@@ -8,9 +8,9 @@ const LABEL: Record<PerformanceTier, string> = {
 };
 
 const CLASS: Record<PerformanceTier, string> = {
-  high: "bg-green-100 text-green-700",
-  low: "bg-red-100 text-red-700",
-  normal: "bg-gray-100 text-gray-700",
+  high: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+  low: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
+  normal: "bg-muted text-muted-foreground",
 };
 
 export function PerformanceBadge({ tier }: { tier: PerformanceTier }) {

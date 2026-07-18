@@ -7,7 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
-import { isTeamLeader, ROLES, type UserRole } from "@/lib/auth/roles";
+import { isMasterKeyUser, isTeamLeader, ROLES, type UserRole } from "@/lib/auth/roles";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,11 +71,15 @@ export function EditMemberDialog({
     setLoading(true);
     const supabase = createClient();
 
+    const promotingToLeader =
+      canEditRole && values.role === "team_leader" && member.role !== "team_leader";
+    const needsApproval = promotingToLeader && !isMasterKeyUser(actor.email);
+
     const payload: { full_name: string; phone: string | null; role?: UserRole } = {
       full_name: values.full_name,
       phone: values.phone || null,
     };
-    if (canEditRole) {
+    if (canEditRole && !needsApproval) {
       payload.role = values.role;
     }
 
@@ -86,13 +90,36 @@ export function EditMemberDialog({
       .select()
       .single();
 
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       toast.error(error.message);
       return;
     }
 
+    if (needsApproval) {
+      const { error: requestError } = await supabase.from("role_change_requests").insert({
+        target_user_id: member.id,
+        requested_role: "team_leader",
+        requested_by: actor.id,
+      });
+      setLoading(false);
+
+      if (requestError) {
+        toast.error(
+          requestError.code === "23505"
+            ? "A promotion request is already pending for this member"
+            : requestError.message
+        );
+        return;
+      }
+
+      toast.success("Team member updated. Promotion sent to nasir@thequickstyle.com for approval.");
+      setOpen(false);
+      onSuccess?.(data);
+      return;
+    }
+
+    setLoading(false);
     toast.success("Team member updated");
     setOpen(false);
     onSuccess?.(data);

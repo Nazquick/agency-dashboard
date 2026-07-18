@@ -75,7 +75,7 @@ export function ClientFileUploader({ clientId }: { clientId: string }) {
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
+    <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
       <div className="space-y-2">
         <Label>File type</Label>
         <Select value={fileType} onValueChange={(v) => setFileType(v as typeof fileType)}>

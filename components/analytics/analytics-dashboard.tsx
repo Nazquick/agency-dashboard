@@ -38,7 +38,7 @@ export function AnalyticsDashboard({
       </div>
 
       {clients.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-12 text-center">
+        <div className="rounded-lg border border-dashed bg-card p-12 text-center">
           <p className="text-sm text-muted-foreground">Add a client first to see analytics.</p>
         </div>
       ) : (

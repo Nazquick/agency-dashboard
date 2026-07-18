@@ -15,7 +15,7 @@ function healthLabel(score: number) {
 export function HealthBar({ score, className }: { score: number; className?: string }) {
   return (
     <div className={cn("space-y-1", className)}>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={cn("h-full rounded-full transition-all", healthColor(score))}
           style={{ width: `${Math.max(4, score)}%` }}

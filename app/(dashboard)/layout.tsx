@@ -30,7 +30,7 @@ export default async function DashboardLayout({
 
   return (
     <UserProvider profile={profile}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-muted/40">
         <TopTabs />
         <main className="mx-auto max-w-7xl p-6">{children}</main>
       </div>

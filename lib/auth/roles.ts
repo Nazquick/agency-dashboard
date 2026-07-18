@@ -16,3 +16,9 @@ export function roleLabel(role: UserRole): string {
 export function isTeamLeader(role: UserRole | null | undefined): boolean {
   return role === "team_leader";
 }
+
+export const MASTER_KEY_EMAIL = "nasir@thequickstyle.com";
+
+export function isMasterKeyUser(email: string | null | undefined): boolean {
+  return email === MASTER_KEY_EMAIL;
+}

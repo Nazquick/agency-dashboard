@@ -37,16 +37,16 @@ export function statusLabel(value: TaskStatus): string {
 }
 
 export const PRIORITY_BADGE_CLASS: Record<TaskPriority, string> = {
-  low: "bg-gray-100 text-gray-700",
-  medium: "bg-blue-100 text-blue-700",
-  high: "bg-amber-100 text-amber-800",
-  urgent: "bg-red-100 text-red-700",
+  low: "bg-muted text-muted-foreground",
+  medium: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+  high: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400",
+  urgent: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
 };
 
 export const STATUS_BADGE_CLASS: Record<TaskStatus, string> = {
-  not_started: "bg-gray-100 text-gray-700",
-  in_progress: "bg-blue-100 text-blue-700",
-  blocked: "bg-red-100 text-red-700",
-  review: "bg-amber-100 text-amber-800",
-  done: "bg-green-100 text-green-700",
+  not_started: "bg-muted text-muted-foreground",
+  in_progress: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+  blocked: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
+  review: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400",
+  done: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
 };

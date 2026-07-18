@@ -21,15 +21,15 @@ export type MeetupProposalWithResponses = Tables<"meetup_proposals"> & {
 };
 
 const RESPONSE_BADGE_CLASS: Record<Tables<"meetup_responses">["response"], string> = {
-  pending: "bg-gray-100 text-gray-600",
-  accepted: "bg-green-100 text-green-700",
-  declined: "bg-red-100 text-red-700",
+  pending: "bg-muted text-muted-foreground",
+  accepted: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+  declined: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
 };
 
 const STATUS_BADGE_CLASS: Record<Tables<"meetup_proposals">["status"], string> = {
-  proposed: "bg-blue-100 text-blue-700",
-  confirmed: "bg-green-100 text-green-700",
-  cancelled: "bg-gray-100 text-gray-600",
+  proposed: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+  confirmed: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+  cancelled: "bg-muted text-muted-foreground",
 };
 
 function formatRange(startsAt: string, endsAt: string) {

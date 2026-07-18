@@ -42,7 +42,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-gray-50 p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-muted p-6">
       <YokumeWordmark size="xl" />
       <Card className="w-full max-w-sm">
         <CardHeader>

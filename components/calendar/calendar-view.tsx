@@ -167,7 +167,7 @@ export function CalendarView({
                     "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                     active
                       ? "border-transparent text-white"
-                      : "border-gray-300 text-muted-foreground"
+                      : "text-muted-foreground"
                   )}
                   style={active ? { backgroundColor: colorForAssignee(p.id) } : undefined}
                 >
@@ -189,7 +189,7 @@ export function CalendarView({
         />
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-lg border bg-card p-4">
         <Calendar
           localizer={localizer}
           events={calendarEvents}
@@ -214,7 +214,7 @@ export function CalendarView({
         />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

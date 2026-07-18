@@ -525,7 +525,7 @@ export function TaskForm({
             ) : (
               <div className="space-y-3">
                 {steps.map((step, index) => (
-                  <div key={step.key} className="space-y-2 rounded-md border border-gray-200 p-3">
+                  <div key={step.key} className="space-y-2 rounded-md border p-3">
                     <div className="flex items-start gap-2">
                       <span className="mt-2 text-xs text-muted-foreground">{index + 1}.</span>
                       <div className="flex-1 space-y-2">
@@ -586,7 +586,7 @@ export function TaskForm({
           </Button>
 
           {task && (
-            <div className="flex gap-2 border-t border-gray-200 pt-4">
+            <div className="flex gap-2 border-t pt-4">
               <Button
                 type="button"
                 variant="outline"

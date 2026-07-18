@@ -279,11 +279,11 @@ export function PipelineBoard({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-12 text-center">
+        <div className="rounded-lg border border-dashed bg-card p-12 text-center">
           <p className="text-sm text-muted-foreground">No tasks match these filters.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -314,7 +314,7 @@ export function PipelineBoard({
                         title="Needs AI assessment — click to assign a role"
                       >
                         <span
-                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-gray-400"
+                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted-foreground"
                           aria-hidden
                         />
                         {assessingId === task.id ? "Assessing…" : "Assess"}

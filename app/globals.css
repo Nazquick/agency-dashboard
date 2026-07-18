@@ -224,3 +224,84 @@
     transition: none;
   }
 }
+
+/* Dashboard header — same idea as the landing wordmark, but a quiet,
+   always-on idle wobble with no pointer tilt or click-to-burst. */
+
+.yokume-mini-scene {
+  perspective: 300px;
+}
+
+.yokume-mini-letter {
+  display: inline-block;
+  transform-style: preserve-3d;
+  animation: yokume-mini-life 6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  animation-delay: calc(var(--i) * -0.35s);
+  translate: 0 0 0;
+  rotate: 0deg 0deg 0deg;
+}
+
+@keyframes yokume-mini-life {
+  0%,
+  100% {
+    translate: 0 0 0;
+    rotate: 0deg 0deg 0deg;
+  }
+  50% {
+    translate: calc(var(--dx) * 1px) calc(var(--dy) * 1px) calc(var(--dz) * 1px);
+    rotate: calc(var(--rx) * 1deg) calc(var(--ry) * 1deg) calc(var(--rz) * 1deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yokume-mini-letter {
+    animation: none;
+  }
+}
+
+.dark .rbc-toolbar button {
+  color: var(--foreground);
+}
+.dark .rbc-toolbar button:hover,
+.dark .rbc-toolbar button:focus {
+  color: var(--foreground);
+  background-color: var(--muted);
+}
+.dark .rbc-toolbar button:active,
+.dark .rbc-toolbar button.rbc-active {
+  color: var(--foreground);
+  background-color: var(--muted);
+  border-color: var(--border);
+}
+.dark .rbc-off-range-bg {
+  background: color-mix(in oklch, var(--foreground) 6%, transparent);
+}
+.dark .rbc-off-range {
+  color: var(--muted-foreground);
+}
+.dark .rbc-today {
+  background-color: color-mix(in oklch, var(--primary) 15%, transparent);
+}
+.dark .rbc-overlay {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+}
+.dark .rbc-header,
+.dark .rbc-month-view,
+.dark .rbc-day-bg + .rbc-day-bg,
+.dark .rbc-month-row + .rbc-month-row,
+.dark .rbc-header + .rbc-header,
+.dark .rbc-agenda-view table.rbc-agenda-table,
+.dark .rbc-agenda-view table.rbc-agenda-table tbody > tr > td,
+.dark .rbc-agenda-view table.rbc-agenda-table tbody > tr + tr,
+.dark .rbc-agenda-view table.rbc-agenda-table thead > tr > th,
+.dark .rbc-time-content,
+.dark .rbc-time-header.rbc-overflowing,
+.dark .rbc-timeslot-group,
+.dark .rbc-time-content > * + * > * {
+  border-color: var(--border);
+}
+.dark .rbc-show-more {
+  color: var(--primary);
+}
