@@ -2,6 +2,18 @@ import Link from "next/link";
 import { YokumeHero3D } from "@/components/marketing/yokume-hero-3d";
 import { Button } from "@/components/ui/button";
 
+const SERVICES = [
+  "DESIGN",
+  "GRAPHIC",
+  "FILM",
+  "PHOTO",
+  "PR",
+  "WEB",
+  "ANALYTICS",
+  "STRATEGY",
+  "CONSULTING",
+];
+
 export function LandingPage() {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#0a0b10]">
@@ -33,9 +45,18 @@ export function LandingPage() {
 
       <div className="relative flex flex-1 flex-col items-center justify-center gap-16 px-6 py-24 sm:gap-20">
         <YokumeHero3D />
-        <p className="max-w-md text-center font-[family-name:var(--font-syne)] text-sm font-medium tracking-[0.32em] text-[#c9baa6] sm:text-base">
-          THE ONLY TEAM YOU NEED
-        </p>
+        <div className="flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-2 font-[family-name:var(--font-syne)] text-xs font-medium tracking-[0.28em] text-[#c9baa6] sm:gap-x-3 sm:text-sm">
+          {SERVICES.map((service, i) => (
+            <span key={service} className="flex items-center gap-x-2 sm:gap-x-3">
+              {service}
+              {i < SERVICES.length - 1 && (
+                <span aria-hidden className="text-[#c9baa6]/40">
+                  ·
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="relative flex justify-center pb-14">
