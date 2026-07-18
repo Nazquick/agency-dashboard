@@ -133,10 +133,10 @@ export function MeetupList({
           const myResponse = proposal.responses.find((r) => r.profile_id === profile.id);
           return (
             <Card key={proposal.id}>
-              <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">{proposal.purpose}</h3>
+              <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-medium break-words">{proposal.purpose}</h3>
                     <Badge className={STATUS_BADGE_CLASS[proposal.status]}>
                       {proposal.status === "proposed"
                         ? "Awaiting RSVPs"

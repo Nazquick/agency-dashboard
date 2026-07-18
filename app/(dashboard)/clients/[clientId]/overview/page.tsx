@@ -29,9 +29,9 @@ export default async function ClientOverviewPage({
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">Description</CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <ClientCoverUploader clientId={client.id} hasCover={Boolean(client.cover_image_path)} />
             <EditClientDialog client={client} />
           </div>

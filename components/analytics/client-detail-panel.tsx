@@ -58,7 +58,7 @@ export function ClientDetailPanel({
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">Social accounts</CardTitle>
           <SocialAccountForm clientId={client.id} onSuccess={onSocialAccountAdded} />
         </CardHeader>
@@ -82,9 +82,9 @@ export function ClientDetailPanel({
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">Content performance</CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <ContentAssetForm
               clientId={client.id}
               socialAccounts={socialAccounts}

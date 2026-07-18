@@ -183,7 +183,7 @@ export function ContentAssetForm({
             <Label htmlFor="asset-url">Link (optional)</Label>
             <Input id="asset-url" type="url" {...register("url")} />
           </div>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="asset-views">Views</Label>
               <Input id="asset-views" type="number" min={0} {...register("views")} />

@@ -16,7 +16,7 @@ export function SideTabs({ clientId }: { clientId: string }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex w-48 shrink-0 flex-col gap-1">
+    <nav className="flex gap-1 overflow-x-auto pb-1 md:w-48 md:shrink-0 md:flex-col md:overflow-visible md:pb-0">
       {TABS.map((tab) => {
         const href = `/clients/${clientId}/${tab.segment}`;
         const isActive = pathname === href;
@@ -25,7 +25,7 @@ export function SideTabs({ clientId }: { clientId: string }) {
             key={tab.segment}
             href={href}
             className={cn(
-              "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               isActive
                 ? "bg-secondary text-secondary-foreground"
                 : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"

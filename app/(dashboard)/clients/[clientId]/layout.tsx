@@ -25,7 +25,7 @@ export default async function ClientLayout({
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">{client.name}</h1>
-      <div className="flex gap-8">
+      <div className="flex flex-col gap-4 md:flex-row md:gap-8">
         <SideTabs clientId={client.id} />
         <div className="min-w-0 flex-1">{children}</div>
       </div>

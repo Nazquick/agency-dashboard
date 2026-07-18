@@ -63,7 +63,17 @@ export function TopTabs() {
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-3 md:gap-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9 md:hidden"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </Button>
           <div className="flex flex-col leading-none">
             <YokumeWordmark size="md" animated />
             <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -92,12 +102,10 @@ export function TopTabs() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-2 md:flex">
-            <ThemeToggle />
-          </div>
+        <div className="hidden items-center gap-2 md:flex">
+          <ThemeToggle />
           <DropdownMenu>
-            <DropdownMenuTrigger className="hidden items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex">
+            <DropdownMenuTrigger className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Avatar className="h-8 w-8">
                 <AvatarFallback
                   className="text-xs text-white"
@@ -120,17 +128,6 @@ export function TopTabs() {
               <DropdownMenuItem onSelect={handleSignOut}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9 md:hidden"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-          </Button>
         </div>
       </div>
 

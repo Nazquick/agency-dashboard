@@ -189,29 +189,31 @@ export function CalendarView({
         />
       </div>
 
-      <div className="rounded-lg border bg-card p-4">
-        <Calendar
-          localizer={localizer}
-          events={calendarEvents}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: 600 }}
-          view={view}
-          onView={setView}
-          date={date}
-          onNavigate={setDate}
-          views={["month", "week", "day"]}
-          components={{ event: CalendarEventContent }}
-          eventPropGetter={(event) => {
-            const e = event.resource as CalendarEventWithRelations;
-            return {
-              style: {
-                backgroundColor: colorForAssignee(e.assignee_id),
-                border: e.source === "email" ? "2px solid #000000" : undefined,
-              },
-            };
-          }}
-        />
+      <div className="overflow-x-auto rounded-lg border bg-card p-4">
+        <div className="h-[420px] min-w-[640px] sm:h-[480px] lg:h-[560px]">
+          <Calendar
+            localizer={localizer}
+            events={calendarEvents}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: "100%" }}
+            view={view}
+            onView={setView}
+            date={date}
+            onNavigate={setDate}
+            views={["month", "week", "day"]}
+            components={{ event: CalendarEventContent }}
+            eventPropGetter={(event) => {
+              const e = event.resource as CalendarEventWithRelations;
+              return {
+                style: {
+                  backgroundColor: colorForAssignee(e.assignee_id),
+                  border: e.source === "email" ? "2px solid #000000" : undefined,
+                },
+              };
+            }}
+          />
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg border bg-card">
