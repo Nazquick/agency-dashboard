@@ -115,3 +115,112 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Landing page — 3D wordmark ------------------------------------------- */
+
+.yokume-stage {
+  perspective: 1400px;
+  --burst-scale: 1;
+}
+
+/* Shatter distance scales down on narrow viewports so flying letters don't
+   overlap the tagline below — the burst radius was tuned for desktop. */
+@media (max-width: 480px) {
+  .yokume-stage {
+    --burst-scale: 0.38;
+  }
+}
+@media (min-width: 481px) and (max-width: 860px) {
+  .yokume-stage {
+    --burst-scale: 0.65;
+  }
+}
+
+.yokume-scene {
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.yokume-letter {
+  display: inline-block;
+  transform-style: preserve-3d;
+  animation: yokume-letter-life 9s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  animation-delay: calc(var(--i) * -0.18s);
+  translate: 0 0 0;
+  rotate: 0deg 0deg 0deg;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.5));
+}
+
+.yokume-letter.is-bursting {
+  animation: yokume-burst-now 1.3s cubic-bezier(0.65, 0, 0.35, 1) 1;
+}
+
+@keyframes yokume-letter-life {
+  0%,
+  100% {
+    translate: 0 0 0;
+    rotate: 0deg 0deg 0deg;
+  }
+  8% {
+    translate: 0 -0.4em 0;
+    rotate: 3deg 2deg 1deg;
+  }
+  16% {
+    translate: 0 0 0;
+    rotate: 0deg 0deg 0deg;
+  }
+  24% {
+    translate: 0 -0.35em 0;
+    rotate: -3deg -1deg 1deg;
+  }
+  32%,
+  38% {
+    translate: 0 0 0;
+    rotate: 0deg 0deg 0deg;
+  }
+  48%,
+  56% {
+    translate: calc(var(--dx) * var(--burst-scale) * 1px) calc(var(--dy) * var(--burst-scale) * 1px)
+      calc(var(--dz) * var(--burst-scale) * 1px);
+    rotate: calc(var(--rx) * 1deg) calc(var(--ry) * 1deg) calc(var(--rz) * 1deg);
+  }
+  70% {
+    translate: 0 0 0;
+    rotate: 0deg 0deg 0deg;
+  }
+  85% {
+    translate: 0 -0.3em 0;
+    rotate: 2deg -2deg 1deg;
+  }
+  92% {
+    translate: 0 0 0;
+    rotate: 0deg 0deg 0deg;
+  }
+}
+
+@keyframes yokume-burst-now {
+  0% {
+    translate: 0 0 0;
+    rotate: 0deg 0deg 0deg;
+  }
+  45% {
+    translate: calc(var(--dx) * var(--burst-scale) * 1.4px) calc(var(--dy) * var(--burst-scale) * 1.4px)
+      calc(var(--dz) * var(--burst-scale) * 1.4px);
+    rotate: calc(var(--rx) * 1.6deg) calc(var(--ry) * 1.6deg) calc(var(--rz) * 1.6deg);
+  }
+  100% {
+    translate: 0 0 0;
+    rotate: 0deg 0deg 0deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yokume-letter,
+  .yokume-letter.is-bursting {
+    animation: none;
+  }
+  .yokume-scene {
+    transition: none;
+  }
+}

@@ -29,9 +29,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublicRoute = PUBLIC_ROUTES.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
-  );
+  const pathname = request.nextUrl.pathname;
+  const isPublicRoute =
+    pathname === "/" || PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
@@ -39,7 +39,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isPublicRoute) {
+  // The landing page ("/") stays visible to signed-in users too — only
+  // /login and /signup should bounce them straight into the app.
+  if (user && PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
     const url = request.nextUrl.clone();
     url.pathname = "/clients";
     return NextResponse.redirect(url);
