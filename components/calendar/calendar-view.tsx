@@ -152,7 +152,7 @@ export function CalendarView({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {showAssigneeFilter ? (
           <div className="flex flex-wrap gap-2">
@@ -190,7 +190,7 @@ export function CalendarView({
       </div>
 
       <div className="overflow-x-auto rounded-lg border bg-card p-4">
-        <div className="h-[420px] min-w-[640px] sm:h-[480px] lg:h-[560px]">
+        <div className="h-[calc(100dvh-336px)] min-h-[260px] max-h-[420px] min-w-[640px] sm:h-[480px] sm:max-h-none lg:h-[560px]">
           <Calendar
             localizer={localizer}
             events={calendarEvents}
