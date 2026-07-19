@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isMasterKeyUser } from "@/lib/auth/roles";
 
 const VALID_ROLES = [
   "editor_designer",
@@ -21,31 +22,42 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("email")
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "team_leader") {
+  if (!isMasterKeyUser(profile?.email)) {
     return NextResponse.json(
-      { error: "Only team leaders can add team members" },
+      { error: "Only the admin account can add team members" },
       { status: 403 }
     );
   }
 
   const body = await request.json();
-  const { email, full_name, role } = body as {
+  const { email, full_name, role, password } = body as {
     email?: string;
     full_name?: string;
     role?: string;
+    password?: string;
   };
 
-  if (!email || !full_name || !role || !VALID_ROLES.includes(role)) {
+  if (
+    !email ||
+    !full_name ||
+    !role ||
+    !VALID_ROLES.includes(role) ||
+    !password ||
+    password.length < 8
+  ) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name, role },
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name, role },
   });
 
   if (error) {

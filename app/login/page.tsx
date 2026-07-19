@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { YokumeWordmark } from "@/components/branding/yokume-wordmark";
 import { Button } from "@/components/ui/button";
@@ -78,12 +77,6 @@ export default function LoginPage() {
               {loading ? "Signing in…" : "Sign in"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            New team member?{" "}
-            <Link href="/signup" className="underline underline-offset-4">
-              Create an account
-            </Link>
-          </p>
         </CardContent>
       </Card>
     </div>

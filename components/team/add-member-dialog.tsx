@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useUser } from "@/components/providers/user-provider";
-import { isTeamLeader, ROLES } from "@/lib/auth/roles";
+import { isMasterKeyUser, ROLES } from "@/lib/auth/roles";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +26,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const inviteSchema = z.object({
+const memberSchema = z.object({
   full_name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
+  password: z.string().min(8, "Must be at least 8 characters"),
   role: z.enum([
     "team_leader",
     "editor_designer",
@@ -37,7 +38,7 @@ const inviteSchema = z.object({
   ]),
 });
 
-type InviteFormValues = z.infer<typeof inviteSchema>;
+type MemberFormValues = z.infer<typeof memberSchema>;
 
 export function AddMemberDialog({
   onSuccess,
@@ -53,18 +54,18 @@ export function AddMemberDialog({
     control,
     reset,
     formState: { errors },
-  } = useForm<InviteFormValues>({
-    resolver: zodResolver(inviteSchema),
-    defaultValues: { full_name: "", email: "", role: undefined },
+  } = useForm<MemberFormValues>({
+    resolver: zodResolver(memberSchema),
+    defaultValues: { full_name: "", email: "", password: "", role: undefined },
   });
 
-  if (!isTeamLeader(profile.role)) {
+  if (!isMasterKeyUser(profile.email)) {
     return null;
   }
 
-  async function onSubmit(values: InviteFormValues) {
+  async function onSubmit(values: MemberFormValues) {
     setLoading(true);
-    const res = await fetch("/api/team/invite", {
+    const res = await fetch("/api/team/create-member", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
@@ -73,11 +74,11 @@ export function AddMemberDialog({
     setLoading(false);
 
     if (!res.ok) {
-      toast.error(body.error ?? "Failed to send invite");
+      toast.error(body.error ?? "Failed to add team member");
       return;
     }
 
-    toast.success(`Invite sent to ${values.email}`);
+    toast.success(`${values.full_name} can now sign in`);
     if (body.profile) onSuccess?.(body.profile);
     reset();
     setOpen(false);
@@ -106,6 +107,18 @@ export function AddMemberDialog({
             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
+            <Label htmlFor="member-password">Password</Label>
+            <Input
+              id="member-password"
+              type="password"
+              autoComplete="new-password"
+              {...register("password")}
+            />
+            {errors.password && (
+              <p className="text-sm text-destructive">{errors.password.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
             <Label>Role</Label>
             <Controller
               name="role"
@@ -128,11 +141,11 @@ export function AddMemberDialog({
             {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
           </div>
           <p className="text-xs text-muted-foreground">
-            They&apos;ll get an email invite to set their own password — you won&apos;t need to
-            share one.
+            They can sign in with this email and password right away, and change their password
+            themselves afterward.
           </p>
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Sending invite…" : "Send invite"}
+            {loading ? "Adding…" : "Add member"}
           </Button>
         </form>
       </DialogContent>

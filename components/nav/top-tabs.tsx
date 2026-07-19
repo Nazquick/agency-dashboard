@@ -9,6 +9,7 @@ import { useUser } from "@/components/providers/user-provider";
 import { PipelineBadge } from "@/components/nav/pipeline-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { YokumeWordmark } from "@/components/branding/yokume-wordmark";
+import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
 import { roleLabel } from "@/lib/auth/roles";
 import { colorForId } from "@/lib/colors";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -46,6 +47,7 @@ export function TopTabs() {
   const router = useRouter();
   const profile = useUser();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
 
   if (pathname !== lastPathname) {
@@ -125,6 +127,9 @@ export function TopTabs() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setChangePasswordOpen(true)}>
+                Change password
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleSignOut}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -154,7 +159,7 @@ export function TopTabs() {
             })}
           </nav>
 
-          <div className="mt-3 flex items-center justify-between border-t pt-3">
+          <div className="mt-3 border-t pt-3">
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarFallback
@@ -169,8 +174,11 @@ export function TopTabs() {
                 <span className="text-xs text-muted-foreground">{roleLabel(profile.role)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <ThemeToggle />
+              <Button variant="outline" size="sm" onClick={() => setChangePasswordOpen(true)}>
+                Change password
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 Sign out
               </Button>
@@ -178,6 +186,8 @@ export function TopTabs() {
           </div>
         </div>
       )}
+
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </header>
   );
 }
