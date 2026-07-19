@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Syne } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -23,6 +23,18 @@ const syne = Syne({
 export const metadata: Metadata = {
   title: "Yokume",
   description: "Internal workflow dashboard for the team",
+  appleWebApp: {
+    capable: true,
+    title: "Yokume",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0b10" },
+  ],
 };
 
 export default function RootLayout({
