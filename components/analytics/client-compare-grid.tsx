@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { colorForId } from "@/lib/colors";
 import { activityHealth, engagementScore, tasksThisMonth } from "@/lib/analytics/metrics";
+import { salesThisMonth, formatSales } from "@/lib/analytics/sales";
 import { HealthBar } from "@/components/analytics/health-bar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ export function ClientCompareGrid({
   tasks,
   events,
   assets,
+  sales,
   selectedClientId,
   onSelect,
 }: {
@@ -20,6 +22,7 @@ export function ClientCompareGrid({
   tasks: Pick<Tables<"tasks">, "client_id" | "created_at">[];
   events: Pick<Tables<"calendar_events">, "client_id" | "created_at">[];
   assets: Tables<"content_assets">[];
+  sales: Pick<Tables<"client_sales">, "client_id" | "amount" | "sale_date">[];
   selectedClientId: string | null;
   onSelect: (clientId: string) => void;
 }) {
@@ -56,6 +59,10 @@ export function ClientCompareGrid({
               </CardHeader>
               <CardContent className="space-y-3">
                 <HealthBar score={health} />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Sales this month</span>
+                  <span className="font-medium">{formatSales(salesThisMonth(sales, client.id))}</span>
+                </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Tasks this month</span>
                   <Badge variant={overLimit ? "destructive" : "secondary"}>

@@ -171,6 +171,150 @@ export type Database = {
           },
         ]
       }
+      client_reports: {
+        Row: {
+          ad_spend: number | null
+          app_downloads: number | null
+          campaign_name: string | null
+          campaign_sales: number | null
+          client_id: string
+          content_count: number | null
+          content_type: string | null
+          created_at: string
+          facebook_comments: number | null
+          facebook_likes: number | null
+          facebook_views: number | null
+          id: string
+          instagram_comments: number | null
+          instagram_likes: number | null
+          instagram_views: number | null
+          report_date: string
+          roas: number | null
+          sales_percent: number | null
+          snapchat_comments: number | null
+          snapchat_likes: number | null
+          snapchat_views: number | null
+          submitted_by: string | null
+          tiktok_comments: number | null
+          tiktok_likes: number | null
+          tiktok_views: number | null
+        }
+        Insert: {
+          ad_spend?: number | null
+          app_downloads?: number | null
+          campaign_name?: string | null
+          campaign_sales?: number | null
+          client_id: string
+          content_count?: number | null
+          content_type?: string | null
+          created_at?: string
+          facebook_comments?: number | null
+          facebook_likes?: number | null
+          facebook_views?: number | null
+          id?: string
+          instagram_comments?: number | null
+          instagram_likes?: number | null
+          instagram_views?: number | null
+          report_date?: string
+          roas?: number | null
+          sales_percent?: number | null
+          snapchat_comments?: number | null
+          snapchat_likes?: number | null
+          snapchat_views?: number | null
+          submitted_by?: string | null
+          tiktok_comments?: number | null
+          tiktok_likes?: number | null
+          tiktok_views?: number | null
+        }
+        Update: {
+          ad_spend?: number | null
+          app_downloads?: number | null
+          campaign_name?: string | null
+          campaign_sales?: number | null
+          client_id?: string
+          content_count?: number | null
+          content_type?: string | null
+          created_at?: string
+          facebook_comments?: number | null
+          facebook_likes?: number | null
+          facebook_views?: number | null
+          id?: string
+          instagram_comments?: number | null
+          instagram_likes?: number | null
+          instagram_views?: number | null
+          report_date?: string
+          roas?: number | null
+          sales_percent?: number | null
+          snapchat_comments?: number | null
+          snapchat_likes?: number | null
+          snapchat_views?: number | null
+          submitted_by?: string | null
+          tiktok_comments?: number | null
+          tiktok_likes?: number | null
+          tiktok_views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_reports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reports_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_sales: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          sale_date: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          sale_date?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          sale_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sales_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_social_accounts: {
         Row: {
           client_id: string
@@ -326,6 +470,48 @@ export type Database = {
             columns: ["social_account_id"]
             isOneToOne: false
             referencedRelation: "client_social_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_proofs: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          link: string
+          reported_by: string | null
+          type: Database["public"]["Enums"]["content_proof_type"]
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          link: string
+          reported_by?: string | null
+          type: Database["public"]["Enums"]["content_proof_type"]
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          link?: string
+          reported_by?: string | null
+          type?: Database["public"]["Enums"]["content_proof_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_proofs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_proofs_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -728,6 +914,131 @@ export type Database = {
           },
         ]
       }
+      trixie_companies: {
+        Row: {
+          created_at: string
+          id: string
+          is_public: boolean
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      trixie_roles: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trixie_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "trixie_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trixie_tasks: {
+        Row: {
+          company_id: string
+          cost_estimate: number | null
+          cost_unit: string
+          created_at: string
+          description: string | null
+          experience_required: string | null
+          id: string
+          position: number
+          role_id: string
+          time_estimate: string | null
+          title: string
+          updated_at: string
+          uses_ai: boolean
+        }
+        Insert: {
+          company_id: string
+          cost_estimate?: number | null
+          cost_unit?: string
+          created_at?: string
+          description?: string | null
+          experience_required?: string | null
+          id?: string
+          position?: number
+          role_id: string
+          time_estimate?: string | null
+          title: string
+          updated_at?: string
+          uses_ai?: boolean
+        }
+        Update: {
+          company_id?: string
+          cost_estimate?: number | null
+          cost_unit?: string
+          created_at?: string
+          description?: string | null
+          experience_required?: string | null
+          id?: string
+          position?: number
+          role_id?: string
+          time_estimate?: string | null
+          title?: string
+          updated_at?: string
+          uses_ai?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trixie_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "trixie_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trixie_tasks_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "trixie_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -750,6 +1061,7 @@ export type Database = {
         | "story"
         | "carousel"
         | "other"
+      content_proof_type: "video" | "image" | "graphic" | "collab"
       event_type: "meeting" | "shoot" | "deadline" | "deliverable" | "other"
       meetup_status: "proposed" | "confirmed" | "cancelled"
       rsvp_status: "pending" | "accepted" | "declined"
@@ -904,6 +1216,7 @@ export const Constants = {
         "carousel",
         "other",
       ],
+      content_proof_type: ["video", "image", "graphic", "collab"],
       event_type: ["meeting", "shoot", "deadline", "deliverable", "other"],
       meetup_status: ["proposed", "confirmed", "cancelled"],
       rsvp_status: ["pending", "accepted", "declined"],
