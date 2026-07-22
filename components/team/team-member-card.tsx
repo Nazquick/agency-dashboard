@@ -37,6 +37,8 @@ export function TeamMemberCard({
   const actor = useUser();
   const canEdit = actor.id === member.id || actor.role === "team_leader";
   const hasPhone = Boolean(member.phone);
+  // wa.me needs the full international number as digits only — no "+", spaces, or dashes.
+  const whatsappPhone = member.phone?.replace(/\D/g, "");
   const dialablePhone = member.phone?.replace(/[^\d+]/g, "");
 
   return (
@@ -60,13 +62,16 @@ export function TeamMemberCard({
             >
               {member.email}
             </a>
+            {hasPhone && (
+              <p className="truncate text-sm text-muted-foreground">{member.phone}</p>
+            )}
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" disabled={!hasPhone} asChild={hasPhone}>
             {hasPhone ? (
-              <a href={`tel:${dialablePhone}`}>
+              <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noopener noreferrer">
                 <Phone /> Call
               </a>
             ) : (
