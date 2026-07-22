@@ -26,11 +26,13 @@ export function TeamMemberCard({
   clients,
   profiles,
   onUpdate,
+  onRemoved,
 }: {
   member: Tables<"profiles">;
   clients: Pick<Tables<"clients">, "id" | "name">[];
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role">[];
   onUpdate: (member: Tables<"profiles">) => void;
+  onRemoved: (memberId: string) => void;
 }) {
   const actor = useUser();
   const canEdit = actor.id === member.id || actor.role === "team_leader";
@@ -108,6 +110,7 @@ export function TeamMemberCard({
                 </Button>
               }
               onSuccess={onUpdate}
+              onRemoved={onRemoved}
             />
           )}
         </div>

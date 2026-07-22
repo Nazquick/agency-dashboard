@@ -29,6 +29,7 @@ import {
 
 const memberSchema = z.object({
   full_name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
   phone: z.string().optional(),
   role: z.enum([
     "team_leader",
@@ -44,15 +45,20 @@ export function EditMemberDialog({
   member,
   trigger,
   onSuccess,
+  onRemoved,
 }: {
   member: Tables<"profiles">;
   trigger: React.ReactNode;
   onSuccess?: (member: Tables<"profiles">) => void;
+  onRemoved?: (memberId: string) => void;
 }) {
   const actor = useUser();
   const canEditRole = isTeamLeader(actor.role);
+  const canEditEmail = isMasterKeyUser(actor.email);
+  const canRemove = isMasterKeyUser(actor.email) && actor.id !== member.id;
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const {
     register,
     handleSubmit,
@@ -62,6 +68,7 @@ export function EditMemberDialog({
     resolver: zodResolver(memberSchema),
     defaultValues: {
       full_name: member.full_name,
+      email: member.email,
       phone: member.phone ?? "",
       role: member.role,
     },
@@ -70,6 +77,20 @@ export function EditMemberDialog({
   async function onSubmit(values: MemberFormValues) {
     setLoading(true);
     const supabase = createClient();
+
+    if (canEditEmail && values.email !== member.email) {
+      const res = await fetch(`/api/team/${member.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: values.email }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setLoading(false);
+        toast.error(body.error ?? "Failed to update email");
+        return;
+      }
+    }
 
     const promotingToLeader =
       canEditRole && values.role === "team_leader" && member.role !== "team_leader";
@@ -125,6 +146,25 @@ export function EditMemberDialog({
     onSuccess?.(data);
   }
 
+  async function handleRemove() {
+    if (!window.confirm(`Remove ${member.full_name}? They will no longer be able to sign in.`)) {
+      return;
+    }
+    setRemoving(true);
+    const res = await fetch(`/api/team/${member.id}`, { method: "DELETE" });
+    const body = await res.json();
+    setRemoving(false);
+
+    if (!res.ok) {
+      toast.error(body.error ?? "Failed to remove team member");
+      return;
+    }
+
+    toast.success(`${member.full_name} removed`);
+    setOpen(false);
+    onRemoved?.(member.id);
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -138,6 +178,21 @@ export function EditMemberDialog({
             <Input id="edit-member-name" {...register("full_name")} />
             {errors.full_name && (
               <p className="text-sm text-destructive">{errors.full_name.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-member-email">Email</Label>
+            <Input
+              id="edit-member-email"
+              type="email"
+              disabled={!canEditEmail}
+              {...register("email")}
+            />
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+            {!canEditEmail && (
+              <p className="text-xs text-muted-foreground">
+                Only nasir@thequickstyle.com can change a member&apos;s email.
+              </p>
             )}
           </div>
           <div className="space-y-2">
@@ -170,6 +225,17 @@ export function EditMemberDialog({
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Saving…" : "Save changes"}
           </Button>
+          {canRemove && (
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full"
+              disabled={removing}
+              onClick={handleRemove}
+            >
+              {removing ? "Removing…" : "Remove member"}
+            </Button>
+          )}
         </form>
       </DialogContent>
     </Dialog>

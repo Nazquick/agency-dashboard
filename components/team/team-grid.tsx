@@ -39,6 +39,10 @@ export function TeamGrid({
     setMembers((prev) => [...prev, added].sort((a, b) => a.full_name.localeCompare(b.full_name)));
   }
 
+  function handleRemoved(memberId: string) {
+    setMembers((prev) => prev.filter((m) => m.id !== memberId));
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -75,6 +79,7 @@ export function TeamGrid({
               clients={clients}
               profiles={profiles}
               onUpdate={handleUpdate}
+              onRemoved={handleRemoved}
             />
           ))}
         </div>
