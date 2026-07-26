@@ -26,7 +26,11 @@ export function EmailBroadcastDialog({ audience }: { audience: "clients" | "memb
         if (cancelled) return;
         setRecipientCount(new Set((data ?? []).map((c) => c.client_id)).size);
       } else {
-        const { data } = await supabase.from("profiles").select("id").neq("role", "client");
+        const { data } = await supabase
+          .from("profiles")
+          .select("id")
+          .neq("role", "client")
+          .eq("active", true);
         if (cancelled) return;
         setRecipientCount((data ?? []).length);
       }

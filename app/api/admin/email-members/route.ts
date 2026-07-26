@@ -31,7 +31,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Subject and body are required" }, { status: 400 });
   }
 
-  const { data: members } = await supabase.from("profiles").select("email").neq("role", "client");
+  const { data: members } = await supabase
+    .from("profiles")
+    .select("email")
+    .neq("role", "client")
+    .eq("active", true);
   const recipients = [...new Set((members ?? []).map((m) => m.email))];
 
   try {

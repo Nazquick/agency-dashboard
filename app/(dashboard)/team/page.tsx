@@ -9,12 +9,24 @@ export default async function TeamPage() {
 
   const [
     { data: profiles },
+    { data: deactivatedProfiles },
     { data: clients },
     { data: proposals },
     { data: tasks },
     { data: roleRequests },
   ] = await Promise.all([
-    supabase.from("profiles").select("*").neq("role", "client").order("full_name"),
+    supabase
+      .from("profiles")
+      .select("*")
+      .neq("role", "client")
+      .eq("active", true)
+      .order("full_name"),
+    supabase
+      .from("profiles")
+      .select("*")
+      .neq("role", "client")
+      .eq("active", false)
+      .order("full_name"),
     supabase.from("clients").select("id, name").eq("archived", false).order("name"),
     supabase
       .from("meetup_proposals")
@@ -41,6 +53,7 @@ export default async function TeamPage() {
   return (
     <TeamGrid
       initialMembers={profiles ?? []}
+      initialDeactivatedMembers={deactivatedProfiles ?? []}
       clients={clients ?? []}
       initialProposals={(proposals ?? []) as unknown as MeetupProposalWithResponses[]}
       tasks={(tasks ?? []) as unknown as WorkloadTask[]}

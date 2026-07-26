@@ -10,7 +10,12 @@ export default async function PipelinePage() {
       .select("*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role)")
       .order("created_at", { ascending: false }),
     supabase.from("clients").select("id, name").eq("archived", false).order("name"),
-    supabase.from("profiles").select("id, full_name, role").neq("role", "client").order("full_name"),
+    supabase
+      .from("profiles")
+      .select("id, full_name, role")
+      .neq("role", "client")
+      .eq("active", true)
+      .order("full_name"),
   ]);
 
   return (

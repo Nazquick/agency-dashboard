@@ -189,7 +189,11 @@ export function EditMemberDialog({
   }
 
   async function handleRemove() {
-    if (!window.confirm(`Remove ${member.full_name}? They will no longer be able to sign in.`)) {
+    if (
+      !window.confirm(
+        `Deactivate ${member.full_name}? They'll no longer be able to sign in or be assigned new work, but their past tasks and reports stay on record. You can reactivate them later.`
+      )
+    ) {
       return;
     }
     setRemoving(true);
@@ -198,13 +202,29 @@ export function EditMemberDialog({
     setRemoving(false);
 
     if (!res.ok) {
-      toast.error(body.error ?? "Failed to remove team member");
+      toast.error(body.error ?? "Failed to deactivate team member");
       return;
     }
 
-    toast.success(`${member.full_name} removed`);
+    toast.success(`${member.full_name} deactivated`);
     setOpen(false);
     onRemoved?.(member.id);
+  }
+
+  async function handleReactivate() {
+    setRemoving(true);
+    const res = await fetch(`/api/team/${member.id}`, { method: "PUT" });
+    const body = await res.json();
+    setRemoving(false);
+
+    if (!res.ok) {
+      toast.error(body.error ?? "Failed to reactivate team member");
+      return;
+    }
+
+    toast.success(`${member.full_name} reactivated`);
+    setOpen(false);
+    onSuccess?.({ ...member, active: true });
   }
 
   return (
@@ -292,7 +312,7 @@ export function EditMemberDialog({
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Saving…" : "Save changes"}
           </Button>
-          {canRemove && (
+          {canRemove && member.active !== false && (
             <Button
               type="button"
               variant="destructive"
@@ -300,7 +320,18 @@ export function EditMemberDialog({
               disabled={removing}
               onClick={handleRemove}
             >
-              {removing ? "Removing…" : "Remove member"}
+              {removing ? "Deactivating…" : "Deactivate member"}
+            </Button>
+          )}
+          {canRemove && member.active === false && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={removing}
+              onClick={handleReactivate}
+            >
+              {removing ? "Reactivating…" : "Reactivate member"}
             </Button>
           )}
         </form>

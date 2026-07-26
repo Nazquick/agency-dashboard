@@ -820,6 +820,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active: boolean
           avatar_url: string | null
           client_id: string | null
           created_at: string
@@ -830,6 +831,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
+          active?: boolean
           avatar_url?: string | null
           client_id?: string | null
           created_at?: string
@@ -840,6 +842,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }
         Update: {
+          active?: boolean
           avatar_url?: string | null
           client_id?: string | null
           created_at?: string
