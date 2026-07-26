@@ -12,10 +12,9 @@ export default async function TeamPage() {
     { data: clients },
     { data: proposals },
     { data: tasks },
-    { data: salaries },
     { data: roleRequests },
   ] = await Promise.all([
-    supabase.from("profiles").select("*").order("full_name"),
+    supabase.from("profiles").select("*").neq("role", "client").order("full_name"),
     supabase.from("clients").select("id, name").eq("archived", false).order("name"),
     supabase
       .from("meetup_proposals")
@@ -30,7 +29,6 @@ export default async function TeamPage() {
       )
       .eq("archived", false)
       .neq("status", "done"),
-    supabase.from("profile_salaries").select("*"),
     supabase
       .from("role_change_requests")
       .select(
@@ -46,7 +44,6 @@ export default async function TeamPage() {
       clients={clients ?? []}
       initialProposals={(proposals ?? []) as unknown as MeetupProposalWithResponses[]}
       tasks={(tasks ?? []) as unknown as WorkloadTask[]}
-      initialSalaries={salaries ?? []}
       initialRoleRequests={(roleRequests ?? []) as unknown as RoleChangeRequestWithRelations[]}
     />
   );

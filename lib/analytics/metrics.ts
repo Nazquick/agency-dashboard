@@ -86,3 +86,18 @@ export function tasksThisMonth(
   const start = startOfCurrentMonthIso();
   return tasks.filter((t) => t.client_id === clientId && t.created_at >= start).length;
 }
+
+// This month plus the two before it — calendar-aligned like
+// startOfCurrentMonthIso, not a rolling 90-day window.
+export function startOfTrailingQuarterIso(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
+}
+
+export function tasksInQuarter(
+  tasks: Pick<Tables<"tasks">, "client_id" | "created_at">[],
+  clientId: string
+): number {
+  const start = startOfTrailingQuarterIso();
+  return tasks.filter((t) => t.client_id === clientId && t.created_at >= start).length;
+}

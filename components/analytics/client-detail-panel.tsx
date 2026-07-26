@@ -32,6 +32,7 @@ export function ClientDetailPanel({
   socialAccounts,
   assets,
   sales,
+  reports,
   contentProofs,
   onSocialAccountAdded,
   onAssetSaved,
@@ -42,6 +43,7 @@ export function ClientDetailPanel({
   socialAccounts: Tables<"client_social_accounts">[];
   assets: Tables<"content_assets">[];
   sales: Tables<"client_sales">[];
+  reports: Tables<"client_reports">[];
   contentProofs: Tables<"content_proofs">[];
   onSocialAccountAdded: (account: Tables<"client_social_accounts">) => void;
   onAssetSaved: (asset: Tables<"content_assets">) => void;
@@ -139,7 +141,13 @@ export function ClientDetailPanel({
               trigger={<Button size="sm">Log asset</Button>}
               onSuccess={onAssetSaved}
             />
-            <ExtractReportDialog client={client} assets={assets} socialAccounts={socialAccounts} />
+            <ExtractReportDialog
+              client={client}
+              assets={assets}
+              socialAccounts={socialAccounts}
+              reports={reports}
+              sales={sales}
+            />
           </div>
         </CardHeader>
         <CardContent>

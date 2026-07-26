@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          summary: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          summary: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           assignee_id: string
@@ -81,6 +119,66 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_baselines: {
+        Row: {
+          ad_spend: number | null
+          client_id: string
+          comments: number | null
+          likes: number | null
+          mentions: number | null
+          posts: number | null
+          roas: number | null
+          sales: number | null
+          shares: number | null
+          updated_at: string
+          updated_by: string | null
+          views: number | null
+        }
+        Insert: {
+          ad_spend?: number | null
+          client_id: string
+          comments?: number | null
+          likes?: number | null
+          mentions?: number | null
+          posts?: number | null
+          roas?: number | null
+          sales?: number | null
+          shares?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          views?: number | null
+        }
+        Update: {
+          ad_spend?: number | null
+          client_id?: string
+          comments?: number | null
+          likes?: number | null
+          mentions?: number | null
+          posts?: number | null
+          roas?: number | null
+          sales?: number | null
+          shares?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_baselines_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_baselines_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -188,6 +286,7 @@ export type Database = {
           instagram_comments: number | null
           instagram_likes: number | null
           instagram_views: number | null
+          mentions: number | null
           report_date: string
           roas: number | null
           sales_percent: number | null
@@ -215,6 +314,7 @@ export type Database = {
           instagram_comments?: number | null
           instagram_likes?: number | null
           instagram_views?: number | null
+          mentions?: number | null
           report_date?: string
           roas?: number | null
           sales_percent?: number | null
@@ -242,6 +342,7 @@ export type Database = {
           instagram_comments?: number | null
           instagram_likes?: number | null
           instagram_views?: number | null
+          mentions?: number | null
           report_date?: string
           roas?: number | null
           sales_percent?: number | null
@@ -279,6 +380,7 @@ export type Database = {
           id: string
           note: string | null
           sale_date: string
+          units: number | null
         }
         Insert: {
           amount: number
@@ -288,6 +390,7 @@ export type Database = {
           id?: string
           note?: string | null
           sale_date?: string
+          units?: number | null
         }
         Update: {
           amount?: number
@@ -297,6 +400,7 @@ export type Database = {
           id?: string
           note?: string | null
           sale_date?: string
+          units?: number | null
         }
         Relationships: [
           {
@@ -370,6 +474,7 @@ export type Database = {
           id: string
           monthly_task_limit: number | null
           name: string
+          quarterly_task_limit: number | null
         }
         Insert: {
           archived?: boolean
@@ -380,6 +485,7 @@ export type Database = {
           id?: string
           monthly_task_limit?: number | null
           name: string
+          quarterly_task_limit?: number | null
         }
         Update: {
           archived?: boolean
@@ -390,10 +496,52 @@ export type Database = {
           id?: string
           monthly_task_limit?: number | null
           name?: string
+          quarterly_task_limit?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_transactions: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          transaction_date: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          transaction_date?: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          transaction_date?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_transactions_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -510,6 +658,44 @@ export type Database = {
           {
             foreignKeyName: "content_proofs_reported_by_fkey"
             columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_broadcasts: {
+        Row: {
+          audience: string
+          body: string
+          created_at: string
+          id: string
+          recipient_count: number
+          sent_by: string | null
+          subject: string
+        }
+        Insert: {
+          audience: string
+          body: string
+          created_at?: string
+          id?: string
+          recipient_count: number
+          sent_by?: string | null
+          subject: string
+        }
+        Update: {
+          audience?: string
+          body?: string
+          created_at?: string
+          id?: string
+          recipient_count?: number
+          sent_by?: string | null
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_broadcasts_sent_by_fkey"
+            columns: ["sent_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -635,6 +821,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          client_id: string | null
           created_at: string
           email: string
           full_name: string
@@ -644,6 +831,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          client_id?: string | null
           created_at?: string
           email: string
           full_name: string
@@ -653,6 +841,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          client_id?: string | null
           created_at?: string
           email?: string
           full_name?: string
@@ -660,7 +849,15 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       role_change_requests: {
         Row: {
@@ -844,6 +1041,7 @@ export type Database = {
           deadline: string | null
           description: string | null
           id: string
+          overage_charged: boolean
           priority: Database["public"]["Enums"]["task_priority"]
           source: Database["public"]["Enums"]["task_source"]
           source_email_id: string | null
@@ -863,6 +1061,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          overage_charged?: boolean
           priority?: Database["public"]["Enums"]["task_priority"]
           source?: Database["public"]["Enums"]["task_source"]
           source_email_id?: string | null
@@ -882,6 +1081,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          overage_charged?: boolean
           priority?: Database["public"]["Enums"]["task_priority"]
           source?: Database["public"]["Enums"]["task_source"]
           source_email_id?: string | null
@@ -1039,6 +1239,41 @@ export type Database = {
           },
         ]
       }
+      user_sessions: {
+        Row: {
+          active_seconds: number
+          created_at: string
+          id: string
+          last_seen_at: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          active_seconds?: number
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          active_seconds?: number
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1048,6 +1283,7 @@ export type Database = {
         Args: { p_proposal_id: string }
         Returns: undefined
       }
+      current_client_id: { Args: never; Returns: string }
       current_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1074,13 +1310,14 @@ export type Database = {
         | "linkedin"
         | "other"
       task_priority: "low" | "medium" | "high" | "urgent"
-      task_source: "manual" | "email"
+      task_source: "manual" | "email" | "client"
       task_status: "not_started" | "in_progress" | "blocked" | "review" | "done"
       user_role:
         | "editor_designer"
         | "videographer_photographer"
         | "social_media_manager"
         | "team_leader"
+        | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1230,13 +1467,14 @@ export const Constants = {
         "other",
       ],
       task_priority: ["low", "medium", "high", "urgent"],
-      task_source: ["manual", "email"],
+      task_source: ["manual", "email", "client"],
       task_status: ["not_started", "in_progress", "blocked", "review", "done"],
       user_role: [
         "editor_designer",
         "videographer_photographer",
         "social_media_manager",
         "team_leader",
+        "client",
       ],
     },
   },

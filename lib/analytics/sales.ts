@@ -13,3 +13,11 @@ export function salesThisMonth(sales: Pick<ClientSale, "client_id" | "amount" | 
 export function formatSales(amount: number): string {
   return `${Math.round(amount).toLocaleString()} kr`;
 }
+
+export function totalSalesValue(sales: Pick<ClientSale, "amount">[]): number {
+  return sales.reduce((sum, s) => sum + Number(s.amount), 0);
+}
+
+export function totalUnitsSold(sales: Pick<ClientSale, "units">[]): number {
+  return sales.reduce((sum, s) => sum + (s.units ?? 0), 0);
+}

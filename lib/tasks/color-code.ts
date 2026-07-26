@@ -41,6 +41,9 @@ const ROLE_COLOR: Record<UserRole, TaskColor> = {
   editor_designer: "yellow",
   team_leader: "green",
   social_media_manager: "pink",
+  // Clients are never task assignees — this entry only exists to satisfy
+  // Record<UserRole, ...> exhaustiveness and is never actually looked up.
+  client: "green",
 };
 
 export function roleForColor(color: Exclude<TaskColor, "red">): UserRole {

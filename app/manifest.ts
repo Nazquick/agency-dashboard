@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Yokume — Agency Dashboard",
-    short_name: "Yokume",
+    name: "DYOR — Agency Dashboard",
+    short_name: "DYOR",
     description: "Internal workflow dashboard for the team",
     start_url: "/clients",
     display: "standalone",

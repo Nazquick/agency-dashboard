@@ -7,6 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
+import { logActivity } from "@/lib/activity/log";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,7 @@ const reportSchema = z.object({
   snapchat_views: num(),
   snapchat_comments: num(),
   snapchat_likes: num(),
+  mentions: num(),
   campaign_name: z.string().optional(),
   campaign_sales: num(),
   roas: num(),
@@ -94,6 +96,7 @@ export function FullReportForm({ clientId, clientName }: { clientId: string; cli
       snapchat_views: values.snapchat_views ?? null,
       snapchat_comments: values.snapchat_comments ?? null,
       snapchat_likes: values.snapchat_likes ?? null,
+      mentions: values.mentions ?? null,
       campaign_name: values.campaign_name || null,
       campaign_sales: values.campaign_sales ?? null,
       roas: values.roas ?? null,
@@ -111,6 +114,13 @@ export function FullReportForm({ clientId, clientName }: { clientId: string; cli
     }
 
     toast.success("Report submitted");
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "report_submitted",
+      summary: `Submitted a report for ${clientName}`,
+      entityType: "client",
+      entityId: clientId,
+    });
     reset({ report_date: todayIso() });
     setOpen(false);
   }
@@ -174,6 +184,16 @@ export function FullReportForm({ clientId, clientName }: { clientId: string; cli
             </div>
           ))}
 
+          <div className="space-y-2 rounded-md border p-3">
+            <Label htmlFor="mentions" className="text-sm font-medium">
+              Mentions
+            </Label>
+            <Input id="mentions" type="number" min={0} className="max-w-32" {...register("mentions")} />
+            <p className="text-xs text-muted-foreground">
+              Total times the brand was mentioned/tagged this period, across platforms.
+            </p>
+          </div>
+
           <div className="space-y-3 rounded-md border p-3">
             <p className="text-sm font-medium">Campaign & ad performance</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -209,7 +229,7 @@ export function FullReportForm({ clientId, clientName }: { clientId: string; cli
               </div>
               <div className="space-y-1">
                 <Label htmlFor="sales_percent" className="text-xs text-muted-foreground">
-                  Sales %
+                  Sales growth (%)
                 </Label>
                 <Input id="sales_percent" type="number" step="0.01" {...register("sales_percent")} />
               </div>

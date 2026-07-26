@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { NewClientButton } from "@/components/clients/new-client-button";
 import { ReportPostButton } from "@/components/clients/report-post-button";
 import { colorAtIndex } from "@/lib/colors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +40,6 @@ export default async function ClientsPage() {
             Brand assets, contacts, and per-client workflow.
           </p>
         </div>
-        <NewClientButton />
       </div>
 
       {clientsWithCovers.length > 0 ? (

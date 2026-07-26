@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
+import { logActivity } from "@/lib/activity/log";
 import {
   PRIORITIES,
   STATUSES,
@@ -139,6 +140,16 @@ export function PipelineBoard({
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status } : t)));
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: status === "done" ? "task_completed" : "task_status_changed",
+      summary:
+        status === "done"
+          ? `Marked task "${task.title}" as done`
+          : `Moved task "${task.title}" to ${statusLabel(status)}`,
+      entityType: "task",
+      entityId: task.id,
+    });
   }
 
   async function handleAssess(task: TaskWithRelations) {
@@ -196,6 +207,13 @@ export function PipelineBoard({
     }
     setTasks((prev) => prev.filter((t) => t.id !== task.id));
     toast.success("Task deleted");
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "task_deleted",
+      summary: `Deleted task "${task.title}"`,
+      entityType: "task",
+      entityId: task.id,
+    });
   }
 
   return (
@@ -321,7 +339,16 @@ export function PipelineBoard({
                       </button>
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">{task.title}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {task.title}
+                      {task.source === "client" && (
+                        <Badge variant="secondary" className="shrink-0">
+                          Client request
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   {showClientColumn && (
                     <TableCell className="text-muted-foreground">
                       {task.client?.name ?? "—"}

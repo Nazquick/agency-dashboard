@@ -1,73 +1,58 @@
-import Link from "next/link";
-import { YokumeHero3D } from "@/components/marketing/yokume-hero-3d";
-import { Button } from "@/components/ui/button";
+import { DyorHero } from "@/components/marketing/dyor-hero";
+import { DyorWordmark } from "@/components/branding/dyor-wordmark";
+import { HeroCategories } from "@/components/marketing/hero-categories";
+import { InlineSignIn } from "@/components/marketing/inline-sign-in";
 
-const SERVICES = [
-  "DESIGN",
-  "GRAPHIC",
-  "FILM",
-  "PHOTO",
-  "PR",
-  "WEB",
-  "ANALYTICS",
-  "STRATEGY",
-  "CONSULTING",
-];
+const SCROLL_ROOT_ID = "landing-scroll";
 
 export function LandingPage() {
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#0a0b10]">
-      {/* Atmosphere: warm glow behind the mark, faint blueprint grid, vignette */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(ellipse 60% 45% at 50% 42%, rgba(201, 138, 79, 0.16), transparent 70%)",
-        }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.05]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(245,242,234,1) 1px, transparent 1px), linear-gradient(90deg, rgba(245,242,234,1) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-        }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          boxShadow: "inset 0 0 180px 40px rgba(0,0,0,0.75)",
-        }}
-        aria-hidden
-      />
+    <div id={SCROLL_ROOT_ID} className="h-dvh snap-y snap-mandatory overflow-y-auto bg-white">
+      {/* Section 1 — hero: nav chrome overlaying the interactive video mark */}
+      <section className="relative flex h-dvh snap-start snap-always flex-col justify-center overflow-hidden">
+        <DyorHero className="absolute inset-0" />
 
-      <div className="relative flex flex-1 flex-col items-center justify-center gap-16 px-6 py-24 sm:gap-20">
-        <YokumeHero3D />
-        <div className="flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-2 font-[family-name:var(--font-syne)] text-xs font-medium tracking-[0.28em] text-[#c9baa6] sm:gap-x-3 sm:text-sm">
-          {SERVICES.map((service, i) => (
-            <span key={service} className="flex items-center gap-x-2 sm:gap-x-3">
-              {service}
-              {i < SERVICES.length - 1 && (
-                <span aria-hidden className="text-[#c9baa6]/40">
-                  ·
-                </span>
-              )}
-            </span>
-          ))}
+        <div className="pointer-events-none relative z-10 flex h-full flex-col justify-center px-6 sm:px-10">
+          <header className="pointer-events-auto absolute inset-x-0 top-0 flex items-center justify-between px-6 pt-6 sm:px-10 sm:pt-8">
+            <DyorWordmark size="md" className="text-[#141414]" />
+            <a
+              href="#signin"
+              className="rounded-full border border-[#141414]/20 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[#141414] backdrop-blur-sm transition-colors hover:border-[#141414]/50 hover:bg-white"
+            >
+              Sign in
+            </a>
+          </header>
+          <div className="absolute inset-x-6 top-20 border-t border-[#141414]/15 sm:inset-x-10 sm:top-24" />
+
+          <div className="absolute bottom-6 right-6 flex flex-col items-end gap-4 sm:bottom-10 sm:right-10">
+            <div aria-hidden className="flex flex-col items-center gap-2 text-[#141414]/40">
+              <span className="font-[family-name:var(--font-syne)] text-[10px] uppercase tracking-[0.3em]">
+                Scroll
+              </span>
+              <span className="h-8 w-px animate-pulse bg-[#141414]/30" />
+            </div>
+            <HeroCategories scrollRootId={SCROLL_ROOT_ID} />
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="relative flex justify-center pb-14">
-        <Button
-          asChild
-          size="lg"
-          className="h-12 rounded-full bg-[#f5f2ea] px-8 text-sm font-semibold tracking-wide text-[#151a2e] shadow-[0_8px_30px_rgba(245,242,234,0.15)] transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_12px_40px_rgba(245,242,234,0.25)]"
-        >
-          <Link href="/login">Dashboard Sign In</Link>
-        </Button>
-      </div>
+      {/* Section 2 — reveals on scroll: sign-in, inline */}
+      <section
+        id="signin"
+        className="relative flex h-dvh snap-start snap-always flex-col items-center justify-center px-6"
+      >
+        <InlineSignIn />
+      </section>
+
+      {/* Section 3 — clients & work, placeholder for now */}
+      <section className="relative flex h-dvh snap-start snap-always flex-col items-center justify-center gap-4 px-6 text-center">
+        <span className="font-[family-name:var(--font-syne)] text-[10px] font-medium uppercase tracking-[0.3em] text-[#141414]/50">
+          Clients &amp; Work
+        </span>
+        <p className="max-w-md text-balance text-lg text-[#141414]/70">
+          We&apos;re just getting started — selected work lands here soon.
+        </p>
+      </section>
     </div>
   );
 }

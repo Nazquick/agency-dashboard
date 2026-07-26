@@ -25,6 +25,10 @@ function todayIso() {
 
 const saleSchema = z.object({
   amount: z.coerce.number().positive("Must be greater than 0"),
+  units: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.coerce.number().int().positive().optional()
+  ),
   sale_date: z.string().min(1, "Date is required"),
   note: z.string().optional(),
 });
@@ -51,7 +55,7 @@ export function SalesForm({
     formState: { errors },
   } = useForm<SaleFormValues, unknown, SaleFormOutput>({
     resolver: zodResolver(saleSchema),
-    defaultValues: { amount: undefined, sale_date: todayIso(), note: "" },
+    defaultValues: { amount: undefined, units: undefined, sale_date: todayIso(), note: "" },
   });
 
   async function onSubmit(values: SaleFormOutput) {
@@ -62,6 +66,7 @@ export function SalesForm({
       .insert({
         client_id: clientId,
         amount: values.amount,
+        units: values.units ?? null,
         sale_date: values.sale_date,
         note: values.note || null,
         created_by: profile.id,
@@ -77,7 +82,7 @@ export function SalesForm({
 
     toast.success("Sale logged");
     onSuccess?.(data);
-    reset({ amount: undefined, sale_date: todayIso(), note: "" });
+    reset({ amount: undefined, units: undefined, sale_date: todayIso(), note: "" });
     setOpen(false);
   }
 
@@ -101,6 +106,13 @@ export function SalesForm({
               />
               {errors.amount && (
                 <p className="text-sm text-destructive">{errors.amount.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sale-units">Units sold (optional)</Label>
+              <Input id="sale-units" type="number" min={1} step="1" {...register("units")} />
+              {errors.units && (
+                <p className="text-sm text-destructive">{errors.units.message}</p>
               )}
             </div>
             <div className="space-y-2">

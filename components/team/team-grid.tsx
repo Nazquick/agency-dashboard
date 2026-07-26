@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AddMemberDialog } from "@/components/team/add-member-dialog";
 import { TeamMemberCard } from "@/components/team/team-member-card";
 import { SuggestMeetupDialog } from "@/components/team/suggest-meetup-dialog";
 import { MeetupList, type MeetupProposalWithResponses } from "@/components/team/meetup-list";
@@ -18,14 +17,12 @@ export function TeamGrid({
   clients,
   initialProposals,
   tasks,
-  initialSalaries,
   initialRoleRequests,
 }: {
   initialMembers: Tables<"profiles">[];
   clients: Pick<Tables<"clients">, "id" | "name">[];
   initialProposals: MeetupProposalWithResponses[];
   tasks: WorkloadTask[];
-  initialSalaries: Tables<"profile_salaries">[];
   initialRoleRequests: RoleChangeRequestWithRelations[];
 }) {
   const [members, setMembers] = useState(initialMembers);
@@ -33,10 +30,6 @@ export function TeamGrid({
 
   function handleUpdate(updated: Tables<"profiles">) {
     setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-  }
-
-  function handleAdded(added: Tables<"profiles">) {
-    setMembers((prev) => [...prev, added].sort((a, b) => a.full_name.localeCompare(b.full_name)));
   }
 
   function handleRemoved(memberId: string) {
@@ -54,7 +47,6 @@ export function TeamGrid({
         </div>
         <div className="flex flex-wrap gap-2">
           <SuggestMeetupDialog profiles={profiles} />
-          <AddMemberDialog onSuccess={handleAdded} />
         </div>
       </div>
 
@@ -64,7 +56,7 @@ export function TeamGrid({
 
       <WorkloadKanban tasks={tasks} />
 
-      <WorkloadBalance tasks={tasks} members={members} initialSalaries={initialSalaries} />
+      <WorkloadBalance tasks={tasks} />
 
       {members.length === 0 ? (
         <div className="rounded-lg border border-dashed bg-card p-12 text-center">

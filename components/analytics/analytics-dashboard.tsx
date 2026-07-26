@@ -13,6 +13,7 @@ export function AnalyticsDashboard({
   initialAssets,
   initialSales,
   initialContentProofs,
+  initialReports,
 }: {
   clients: Tables<"clients">[];
   tasks: Pick<Tables<"tasks">, "client_id" | "created_at">[];
@@ -21,6 +22,7 @@ export function AnalyticsDashboard({
   initialAssets: Tables<"content_assets">[];
   initialSales: Tables<"client_sales">[];
   initialContentProofs: Tables<"content_proofs">[];
+  initialReports: Tables<"client_reports">[];
 }) {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(
     clients[0]?.id ?? null
@@ -36,6 +38,7 @@ export function AnalyticsDashboard({
   const clientContentProofs = initialContentProofs.filter(
     (p) => p.client_id === selectedClientId
   );
+  const clientReports = initialReports.filter((r) => r.client_id === selectedClientId);
 
   return (
     <div className="space-y-6">
@@ -68,6 +71,7 @@ export function AnalyticsDashboard({
               socialAccounts={clientSocialAccounts}
               assets={clientAssets}
               sales={clientSales}
+              reports={clientReports}
               contentProofs={clientContentProofs}
               onSocialAccountAdded={(account) =>
                 setSocialAccounts((prev) => [...prev, account])

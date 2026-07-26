@@ -40,21 +40,38 @@ export async function PATCH(
   if (auth.error) return auth.error;
 
   const body = await request.json();
-  const { email } = body as { email?: string };
+  const { email, password } = body as { email?: string; password?: string };
 
-  if (!email) {
-    return NextResponse.json({ error: "Email is required" }, { status: 400 });
+  if (!email && !password) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
+
+  if (password && password.length < 8) {
+    return NextResponse.json(
+      { error: "Password must be at least 8 characters" },
+      { status: 400 }
+    );
   }
 
   const admin = createAdminClient();
 
-  const { error: authError } = await admin.auth.admin.updateUserById(memberId, {
-    email,
-    email_confirm: true,
-  });
+  const attrs: { email?: string; email_confirm?: true; password?: string } = {};
+  if (email) {
+    attrs.email = email;
+    attrs.email_confirm = true;
+  }
+  if (password) {
+    attrs.password = password;
+  }
+
+  const { error: authError } = await admin.auth.admin.updateUserById(memberId, attrs);
 
   if (authError) {
     return NextResponse.json({ error: authError.message }, { status: 400 });
+  }
+
+  if (!email) {
+    return NextResponse.json({ success: true });
   }
 
   const { data: profile, error: profileError } = await admin

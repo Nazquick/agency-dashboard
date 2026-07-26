@@ -12,7 +12,7 @@ export default async function GlobalCalendarPage() {
       )
       .order("starts_at"),
     supabase.from("clients").select("id, name").eq("archived", false).order("name"),
-    supabase.from("profiles").select("id, full_name, role").order("full_name"),
+    supabase.from("profiles").select("id, full_name, role").neq("role", "client").order("full_name"),
   ]);
 
   return (

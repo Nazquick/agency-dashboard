@@ -7,10 +7,11 @@ import { Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
 import { PipelineBadge } from "@/components/nav/pipeline-badge";
+import { AdminQuotaBadge } from "@/components/nav/admin-quota-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { YokumeWordmark } from "@/components/branding/yokume-wordmark";
+import { DyorWordmark } from "@/components/branding/dyor-wordmark";
 import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
-import { roleLabel } from "@/lib/auth/roles";
+import { isMasterKeyUser, roleLabel } from "@/lib/auth/roles";
 import { colorForId } from "@/lib/colors";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -24,13 +25,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-const TABS = [
+const BASE_TABS = [
   { href: "/clients", label: "Clients" },
   { href: "/pipeline", label: "Action Pipeline" },
   { href: "/calendar", label: "Calendar" },
   { href: "/team", label: "Team" },
-  { href: "/analytics", label: "Analytics & Data" },
+  { href: "/analytics", label: "Analytics" },
 ];
+
+const ADMIN_TAB = { href: "/admin", label: "Admin" };
 
 function initials(name: string) {
   return name
@@ -55,11 +58,13 @@ export function TopTabs() {
     setMobileOpen(false);
   }
 
+  const tabs = isMasterKeyUser(profile.email) ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS;
+
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.refresh();
-    router.push("/login");
+    router.push("/");
   }
 
   return (
@@ -77,20 +82,20 @@ export function TopTabs() {
             {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </Button>
           <div className="flex flex-col leading-none">
-            <YokumeWordmark size="md" animated />
+            <DyorWordmark size="md" animated />
             <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Agency Dashboard
             </span>
           </div>
           <nav className="hidden items-center gap-1 md:flex">
-            {TABS.map((tab) => {
+            {tabs.map((tab) => {
               const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
               return (
                 <Link
                   key={tab.href}
                   href={tab.href}
                   className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "relative whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-secondary text-secondary-foreground"
                       : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
@@ -98,6 +103,7 @@ export function TopTabs() {
                 >
                   {tab.label}
                   {tab.href === "/pipeline" && <PipelineBadge />}
+                  {tab.href === "/admin" && <AdminQuotaBadge />}
                 </Link>
               );
             })}
@@ -139,14 +145,14 @@ export function TopTabs() {
       {mobileOpen && (
         <div className="border-t bg-background px-4 pb-4 md:hidden">
           <nav className="flex flex-col gap-1 pt-2">
-            {TABS.map((tab) => {
+            {tabs.map((tab) => {
               const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
               return (
                 <Link
                   key={tab.href}
                   href={tab.href}
                   className={cn(
-                    "flex items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                    "relative flex items-center whitespace-nowrap rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-secondary text-secondary-foreground"
                       : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
@@ -154,6 +160,7 @@ export function TopTabs() {
                 >
                   {tab.label}
                   {tab.href === "/pipeline" && <PipelineBadge />}
+                  {tab.href === "/admin" && <AdminQuotaBadge />}
                 </Link>
               );
             })}

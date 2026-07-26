@@ -9,6 +9,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader, roleLabel } from "@/lib/auth/roles";
+import { logActivity } from "@/lib/activity/log";
 import { TASK_TYPES, PRIORITIES, STATUSES } from "@/lib/tasks/constants";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -259,6 +260,13 @@ export function TaskForm({
     }
 
     toast.success(nextArchived ? "Task archived" : "Task unarchived");
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: nextArchived ? "task_archived" : "task_unarchived",
+      summary: `${nextArchived ? "Archived" : "Unarchived"} task "${task.title}"`,
+      entityType: "task",
+      entityId: task.id,
+    });
     setOpen(false);
     onSuccess?.(data);
   }
@@ -277,6 +285,13 @@ export function TaskForm({
     }
 
     toast.success("Task deleted");
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "task_deleted",
+      summary: `Deleted task "${task.title}"`,
+      entityType: "task",
+      entityId: task.id,
+    });
     setOpen(false);
     onDelete?.(task.id);
   }
@@ -335,6 +350,33 @@ export function TaskForm({
 
     setLoading(false);
     toast.success(task ? "Task updated" : "Task created");
+
+    if (!task) {
+      logActivity(supabase, {
+        actorId: profile.id,
+        action: "task_created",
+        summary: `Created task "${payload.title}"`,
+        entityType: "task",
+        entityId: taskId,
+      });
+    } else if (payload.status === "done" && task.status !== "done") {
+      logActivity(supabase, {
+        actorId: profile.id,
+        action: "task_completed",
+        summary: `Marked task "${payload.title}" as done`,
+        entityType: "task",
+        entityId: taskId,
+      });
+    } else {
+      logActivity(supabase, {
+        actorId: profile.id,
+        action: "task_updated",
+        summary: `Updated task "${payload.title}"`,
+        entityType: "task",
+        entityId: taskId,
+      });
+    }
+
     setOpen(false);
     if (!task) {
       reset();

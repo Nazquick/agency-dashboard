@@ -5,6 +5,7 @@ import { Plus, X, Video, Image as ImageIcon, PenTool, Users } from "lucide-react
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
+import { logActivity } from "@/lib/activity/log";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,6 +70,13 @@ export function ReportPostButton({
     }
 
     toast.success("Post reported");
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "content_reported",
+      summary: `Reported a ${selected} for ${clientName}`,
+      entityType: "client",
+      entityId: clientId,
+    });
     setSelected(null);
     setLink("");
   }

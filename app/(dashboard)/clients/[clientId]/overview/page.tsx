@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { EditClientDialog } from "@/components/clients/edit-client-dialog";
 import { ContactsSection } from "@/components/clients/contacts-section";
 import { ClientCoverUploader } from "@/components/clients/client-cover-uploader";
+import { CreateClientLoginDialog } from "@/components/clients/create-client-login-dialog";
+import { ClientBaselineForm } from "@/components/clients/client-baseline-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function ClientOverviewPage({
@@ -13,13 +15,14 @@ export default async function ClientOverviewPage({
   const { clientId } = await params;
   const supabase = await createClient();
 
-  const [{ data: client }, { data: contacts }] = await Promise.all([
+  const [{ data: client }, { data: contacts }, { data: baseline }] = await Promise.all([
     supabase.from("clients").select("*").eq("id", clientId).single(),
     supabase
       .from("client_contacts")
       .select("*")
       .eq("client_id", clientId)
       .order("is_primary", { ascending: false }),
+    supabase.from("client_baselines").select("*").eq("client_id", clientId).maybeSingle(),
   ]);
 
   if (!client) {
@@ -33,6 +36,8 @@ export default async function ClientOverviewPage({
           <CardTitle className="text-base">Description</CardTitle>
           <div className="flex flex-wrap gap-2">
             <ClientCoverUploader clientId={client.id} hasCover={Boolean(client.cover_image_path)} />
+            <ClientBaselineForm clientId={client.id} initialBaseline={baseline ?? null} />
+            <CreateClientLoginDialog clientId={client.id} />
             <EditClientDialog client={client} />
           </div>
         </CardHeader>

@@ -21,11 +21,11 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = {
-  title: "Yokume",
+  title: "DYOR",
   description: "Internal workflow dashboard for the team",
   appleWebApp: {
     capable: true,
-    title: "Yokume",
+    title: "DYOR",
     statusBarStyle: "black-translucent",
   },
 };

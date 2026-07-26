@@ -12,6 +12,7 @@ export default async function AnalyticsPage() {
     { data: assets },
     { data: sales },
     { data: contentProofs },
+    { data: reports },
   ] = await Promise.all([
     supabase.from("clients").select("*").eq("archived", false).order("name"),
     supabase.from("tasks").select("client_id, created_at"),
@@ -20,6 +21,7 @@ export default async function AnalyticsPage() {
     supabase.from("content_assets").select("*"),
     supabase.from("client_sales").select("*"),
     supabase.from("content_proofs").select("*"),
+    supabase.from("client_reports").select("*"),
   ]);
 
   return (
@@ -31,6 +33,7 @@ export default async function AnalyticsPage() {
       initialAssets={assets ?? []}
       initialSales={sales ?? []}
       initialContentProofs={contentProofs ?? []}
+      initialReports={reports ?? []}
     />
   );
 }

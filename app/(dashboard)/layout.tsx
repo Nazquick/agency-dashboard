@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { UserProvider } from "@/components/providers/user-provider";
+import { SessionHeartbeat } from "@/components/providers/session-heartbeat";
 import { TopTabs } from "@/components/nav/top-tabs";
 
 export default async function DashboardLayout({
@@ -15,7 +16,7 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/");
   }
 
   const { data: profile } = await supabase
@@ -25,12 +26,17 @@ export default async function DashboardLayout({
     .single();
 
   if (!profile) {
-    redirect("/login");
+    redirect("/");
+  }
+
+  if (profile.role === "client") {
+    redirect("/portal");
   }
 
   return (
     <UserProvider profile={profile}>
       <div className="min-h-screen bg-muted/40">
+        <SessionHeartbeat userId={profile.id} />
         <TopTabs />
         <main className="mx-auto max-w-7xl p-4 sm:p-6">{children}</main>
       </div>

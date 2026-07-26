@@ -1,8 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = ["/login"];
-
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -30,20 +28,13 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isPublicRoute =
-    pathname === "/" || PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+  const isPublicRoute = pathname === "/";
 
+  // Sign-in now lives inline on "/" (no separate /login page), so
+  // unauthenticated visitors bounce there instead.
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  // The landing page ("/") stays visible to signed-in users too — only
-  // /login should bounce them straight into the app.
-  if (user && PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/clients";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 

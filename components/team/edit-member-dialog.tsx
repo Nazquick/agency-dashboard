@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
 import { isMasterKeyUser, isTeamLeader, ROLES, type UserRole } from "@/lib/auth/roles";
+import { logActivity } from "@/lib/activity/log";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,8 @@ export function EditMemberDialog({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -70,7 +73,9 @@ export function EditMemberDialog({
       full_name: member.full_name,
       email: member.email,
       phone: member.phone ?? "",
-      role: member.role,
+      // Team members only — the Team page roster excludes client accounts,
+      // so member.role is never actually "client" here.
+      role: member.role as MemberFormValues["role"],
     },
   });
 
@@ -135,6 +140,13 @@ export function EditMemberDialog({
       }
 
       toast.success("Team member updated. Promotion sent to nasir@thequickstyle.com for approval.");
+      logActivity(supabase, {
+        actorId: actor.id,
+        action: "team_member_updated",
+        summary: `Updated ${member.full_name}'s profile`,
+        entityType: "profile",
+        entityId: member.id,
+      });
       setOpen(false);
       onSuccess?.(data);
       return;
@@ -142,8 +154,38 @@ export function EditMemberDialog({
 
     setLoading(false);
     toast.success("Team member updated");
+    logActivity(supabase, {
+      actorId: actor.id,
+      action: "team_member_updated",
+      summary: `Updated ${member.full_name}'s profile`,
+      entityType: "profile",
+      entityId: member.id,
+    });
     setOpen(false);
     onSuccess?.(data);
+  }
+
+  async function handleResetPassword() {
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setResettingPassword(true);
+    const res = await fetch(`/api/team/${member.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    const body = await res.json();
+    setResettingPassword(false);
+
+    if (!res.ok) {
+      toast.error(body.error ?? "Failed to reset password");
+      return;
+    }
+
+    toast.success(`Password updated for ${member.full_name}`);
+    setNewPassword("");
   }
 
   async function handleRemove() {
@@ -195,6 +237,31 @@ export function EditMemberDialog({
               </p>
             )}
           </div>
+          {canEditEmail && (
+            <div className="space-y-2 rounded-md border p-3">
+              <Label htmlFor="edit-member-new-password">Reset password</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="edit-member-new-password"
+                  type="text"
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={resettingPassword || !newPassword}
+                  onClick={handleResetPassword}
+                >
+                  {resettingPassword ? "Setting…" : "Set"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Takes effect immediately — share it with them directly.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="edit-member-phone">Phone</Label>
             <Input id="edit-member-phone" type="tel" {...register("phone")} />

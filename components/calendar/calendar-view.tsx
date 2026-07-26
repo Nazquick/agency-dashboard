@@ -71,12 +71,14 @@ export function CalendarView({
   profiles,
   defaultClientId,
   showAssigneeFilter = false,
+  readOnly = false,
 }: {
   initialEvents: CalendarEventWithRelations[];
   clients: Pick<Tables<"clients">, "id" | "name">[];
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role">[];
   defaultClientId?: string;
   showAssigneeFilter?: boolean;
+  readOnly?: boolean;
 }) {
   const profile = useUser();
   const leader = isTeamLeader(profile.role);
@@ -114,8 +116,11 @@ export function CalendarView({
   }
 
   function canEdit(event: CalendarEventWithRelations) {
-    return leader || event.assignee_id === profile.id;
+    return !readOnly && (leader || event.assignee_id === profile.id);
   }
+
+  const visibleColumnCount =
+    2 + (defaultClientId ? 0 : 1) + (readOnly ? 0 : 1) + 1 + (readOnly ? 0 : 1);
 
   function upsertLocal(saved: Tables<"calendar_events">) {
     setEvents((prev) => {
@@ -180,13 +185,15 @@ export function CalendarView({
           <div />
         )}
 
-        <EventForm
-          clients={clients}
-          profiles={profiles}
-          defaultClientId={defaultClientId}
-          trigger={<Button>New Event</Button>}
-          onSuccess={upsertLocal}
-        />
+        {!readOnly && (
+          <EventForm
+            clients={clients}
+            profiles={profiles}
+            defaultClientId={defaultClientId}
+            trigger={<Button>New Event</Button>}
+            onSuccess={upsertLocal}
+          />
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-lg border bg-card p-4">
@@ -223,15 +230,15 @@ export function CalendarView({
               <TableHead>Title</TableHead>
               <TableHead>Type</TableHead>
               {!defaultClientId && <TableHead>Client</TableHead>}
-              <TableHead>Assignee</TableHead>
+              {!readOnly && <TableHead>Assignee</TableHead>}
               <TableHead>When</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              {!readOnly && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredEvents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                <TableCell colSpan={visibleColumnCount} className="text-center text-sm text-muted-foreground">
                   No events yet.
                 </TableCell>
               </TableRow>
@@ -251,33 +258,37 @@ export function CalendarView({
                         {event.client?.name ?? "—"}
                       </TableCell>
                     )}
-                    <TableCell className="text-muted-foreground">
-                      {event.assignee?.full_name ?? "—"}
-                    </TableCell>
+                    {!readOnly && (
+                      <TableCell className="text-muted-foreground">
+                        {event.assignee?.full_name ?? "—"}
+                      </TableCell>
+                    )}
                     <TableCell className="text-muted-foreground">
                       {formatRange(event.starts_at, event.ends_at)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {canEdit(event) && (
-                        <div className="flex justify-end gap-2">
-                          <EventForm
-                            event={event}
-                            clients={clients}
-                            profiles={profiles}
-                            defaultClientId={defaultClientId}
-                            trigger={
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-                            }
-                            onSuccess={upsertLocal}
-                          />
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(event)}>
-                            Delete
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
+                    {!readOnly && (
+                      <TableCell className="text-right">
+                        {canEdit(event) && (
+                          <div className="flex justify-end gap-2">
+                            <EventForm
+                              event={event}
+                              clients={clients}
+                              profiles={profiles}
+                              defaultClientId={defaultClientId}
+                              trigger={
+                                <Button variant="outline" size="sm">
+                                  Edit
+                                </Button>
+                              }
+                              onSuccess={upsertLocal}
+                            />
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(event)}>
+                              Delete
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
             )}
