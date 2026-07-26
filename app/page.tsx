@@ -12,11 +12,21 @@ export default async function Home() {
     .from("clients")
     .select("id, name, cover_image_path")
     .eq("archived", false)
-    .order("name")
-    .limit(PROJECT_META.length);
+    .order("name");
+
+  // JØNK's nine locations all read as one brand on the landing page — fold
+  // them into a single folder using the first location's cover photo.
+  const jonkLocations = (clients ?? []).filter((c) => c.name.trim().startsWith("JØNK"));
+  const otherClients = (clients ?? []).filter((c) => !c.name.trim().startsWith("JØNK"));
+  const groupedClients = [
+    ...(jonkLocations.length > 0
+      ? [{ id: jonkLocations[0].id, name: "JØNK", cover_image_path: jonkLocations[0].cover_image_path }]
+      : []),
+    ...otherClients,
+  ];
 
   const projects: UpcomingProject[] = await Promise.all(
-    (clients ?? []).map(async (client, i) => {
+    groupedClients.map(async (client, i) => {
       const meta = PROJECT_META[i % PROJECT_META.length];
       let coverUrl: string | null = null;
       if (client.cover_image_path) {
