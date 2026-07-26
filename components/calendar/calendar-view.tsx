@@ -196,8 +196,8 @@ export function CalendarView({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-card p-4">
-        <div className="h-[calc(100dvh-336px)] min-h-[260px] max-h-[420px] min-w-[640px] sm:h-[480px] sm:max-h-none lg:h-[560px]">
+      <div className="overflow-x-auto rounded-lg border bg-card p-2 sm:p-4">
+        <div className="h-[calc(100dvh-336px)] min-h-[260px] max-h-[420px] sm:h-[480px] sm:max-h-none sm:min-w-[640px] lg:h-[560px]">
           <Calendar
             localizer={localizer}
             events={calendarEvents}

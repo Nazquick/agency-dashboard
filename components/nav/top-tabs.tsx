@@ -83,7 +83,7 @@ export function TopTabs() {
           </Button>
           <div className="flex flex-col leading-none">
             <DyorWordmark size="md" animated />
-            <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="mt-1 text-[8px] font-medium uppercase tracking-normal text-muted-foreground">
               Agency Dashboard
             </span>
           </div>
