@@ -127,7 +127,9 @@ export async function DELETE(
   return NextResponse.json({ success: true });
 }
 
-// Undo a deactivation: lift the ban and re-flag the profile active.
+// Undo a deactivation: re-flag the profile active, and lift the ban — unless
+// this is an external member, who must stay permanently unable to sign in
+// regardless of active status.
 export async function PUT(
   _request: Request,
   { params }: { params: Promise<{ memberId: string }> }
@@ -138,11 +140,22 @@ export async function PUT(
 
   const admin = createAdminClient();
 
-  const { error: unbanError } = await admin.auth.admin.updateUserById(memberId, {
-    ban_duration: "none",
-  });
-  if (unbanError) {
-    return NextResponse.json({ error: unbanError.message }, { status: 400 });
+  const { data: existing, error: fetchError } = await admin
+    .from("profiles")
+    .select("is_external")
+    .eq("id", memberId)
+    .single();
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError.message }, { status: 400 });
+  }
+
+  if (!existing.is_external) {
+    const { error: unbanError } = await admin.auth.admin.updateUserById(memberId, {
+      ban_duration: "none",
+    });
+    if (unbanError) {
+      return NextResponse.json({ error: unbanError.message }, { status: 400 });
+    }
   }
 
   const { error: profileError } = await admin

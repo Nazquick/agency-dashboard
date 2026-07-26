@@ -19,7 +19,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -111,7 +113,7 @@ export function TaskForm({
 }: {
   task?: Tables<"tasks">;
   clients: Pick<Tables<"clients">, "id" | "name">[];
-  profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role">[];
+  profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   defaultClientId?: string;
   defaultAssigneeId?: string;
   trigger: React.ReactNode;
@@ -489,11 +491,27 @@ export function TaskForm({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>Unassigned</SelectItem>
-                      {profiles.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.full_name}
-                        </SelectItem>
-                      ))}
+                      <SelectGroup>
+                        {profiles
+                          .filter((p) => !p.is_external)
+                          .map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.full_name}
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
+                      {profiles.some((p) => p.is_external) && (
+                        <SelectGroup>
+                          <SelectLabel>External team</SelectLabel>
+                          {profiles
+                            .filter((p) => p.is_external)
+                            .map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.full_name}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      )}
                     </SelectContent>
                   </Select>
                 )}

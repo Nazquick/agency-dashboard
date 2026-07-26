@@ -2,10 +2,12 @@ import { DyorHero } from "@/components/marketing/dyor-hero";
 import { DyorWordmark } from "@/components/branding/dyor-wordmark";
 import { HeroCategories } from "@/components/marketing/hero-categories";
 import { InlineSignIn } from "@/components/marketing/inline-sign-in";
+import { ProjectsFolderStack } from "@/components/marketing/projects-folder-stack";
+import type { UpcomingProject } from "@/lib/marketing/upcoming-projects";
 
 const SCROLL_ROOT_ID = "landing-scroll";
 
-export function LandingPage() {
+export function LandingPage({ projects }: { projects: UpcomingProject[] }) {
   return (
     <div id={SCROLL_ROOT_ID} className="h-dvh snap-y snap-mandatory overflow-y-auto bg-white">
       {/* Section 1 — hero: nav chrome overlaying the interactive video mark */}
@@ -17,7 +19,7 @@ export function LandingPage() {
             <DyorWordmark size="md" className="text-[#141414]" />
             <a
               href="#signin"
-              className="rounded-full border border-[#141414]/20 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[#141414] backdrop-blur-sm transition-colors hover:border-[#141414]/50 hover:bg-white"
+              className="rounded-full bg-[#75a1dd] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[#141414] backdrop-blur-sm transition-colors hover:brightness-95"
             >
               Sign in
             </a>
@@ -44,14 +46,12 @@ export function LandingPage() {
         <InlineSignIn />
       </section>
 
-      {/* Section 3 — clients & work, placeholder for now */}
-      <section className="relative flex h-dvh snap-start snap-always flex-col items-center justify-center gap-4 px-6 text-center">
+      {/* Section 3 — upcoming projects, presented as a stacked file archive */}
+      <section className="relative flex min-h-dvh snap-start flex-col items-center justify-center gap-8 bg-white px-6 py-16 sm:py-20">
         <span className="font-[family-name:var(--font-syne)] text-[10px] font-medium uppercase tracking-[0.3em] text-[#141414]/50">
-          Clients &amp; Work
+          The Archive
         </span>
-        <p className="max-w-md text-balance text-lg text-[#141414]/70">
-          We&apos;re just getting started — selected work lands here soon.
-        </p>
+        <ProjectsFolderStack projects={projects} />
       </section>
     </div>
   );

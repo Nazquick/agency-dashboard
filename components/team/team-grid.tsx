@@ -35,7 +35,14 @@ export function TeamGrid({
   const actor = useUser();
   const [members, setMembers] = useState(initialMembers);
   const [deactivatedMembers, setDeactivatedMembers] = useState(initialDeactivatedMembers);
-  const profiles = members.map((m) => ({ id: m.id, full_name: m.full_name, role: m.role }));
+  const internalMembers = members.filter((m) => !m.is_external);
+  const externalMembers = members.filter((m) => m.is_external);
+  const profiles = members.map((m) => ({
+    id: m.id,
+    full_name: m.full_name,
+    role: m.role,
+    is_external: m.is_external,
+  }));
 
   function handleUpdate(updated: Tables<"profiles">) {
     setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
@@ -76,13 +83,13 @@ export function TeamGrid({
 
       <WorkloadBalance tasks={tasks} />
 
-      {members.length === 0 ? (
+      {internalMembers.length === 0 ? (
         <div className="rounded-lg border border-dashed bg-card p-12 text-center">
           <p className="text-sm text-muted-foreground">No team members yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {members.map((member) => (
+          {internalMembers.map((member) => (
             <TeamMemberCard
               key={member.id}
               member={member}
@@ -92,6 +99,29 @@ export function TeamGrid({
               onRemoved={handleRemoved}
             />
           ))}
+        </div>
+      )}
+
+      {externalMembers.length > 0 && (
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold">External team</h2>
+            <p className="text-xs text-muted-foreground">
+              No dashboard access — assignable to tasks and visible in reports.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {externalMembers.map((member) => (
+              <TeamMemberCard
+                key={member.id}
+                member={member}
+                clients={clients}
+                profiles={profiles}
+                onUpdate={handleUpdate}
+                onRemoved={handleRemoved}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -113,7 +143,8 @@ export function TeamGrid({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{member.full_name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {roleLabel(member.role)} · {member.email}
+                    {roleLabel(member.role)}
+                    {member.is_external ? " · External" : ""} · {member.email}
                   </p>
                 </div>
                 <EditMemberDialog

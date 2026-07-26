@@ -60,7 +60,7 @@ export function InlineSignIn() {
             className={cn(
               "flex-1 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-colors",
               audience === a
-                ? "bg-[#141414] text-white"
+                ? "bg-[#75a1dd] text-[#141414]"
                 : "text-[#141414]/60 hover:text-[#141414]"
             )}
           >
@@ -102,7 +102,7 @@ export function InlineSignIn() {
         <Button
           type="submit"
           disabled={loading}
-          className="h-12 w-full rounded-full bg-[#141414] text-sm font-semibold tracking-wide text-white shadow-[0_8px_30px_rgba(20,20,20,0.15)] transition-all hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_12px_40px_rgba(20,20,20,0.25)]"
+          className="h-12 w-full rounded-full bg-[#75a1dd] text-sm font-semibold tracking-wide text-[#141414] shadow-[0_8px_30px_rgba(117,161,221,0.35)] transition-all hover:-translate-y-0.5 hover:brightness-95 hover:shadow-[0_12px_40px_rgba(117,161,221,0.45)]"
         >
           {loading ? "Signing in…" : audience === "client" ? "Sign in as client" : "Sign in"}
         </Button>

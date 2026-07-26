@@ -68,7 +68,7 @@ export function PipelineBoard({
 }: {
   initialTasks: TaskWithRelations[];
   clients: Pick<Tables<"clients">, "id" | "name">[];
-  profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role">[];
+  profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   defaultClientId?: string;
   showClientColumn?: boolean;
 }) {

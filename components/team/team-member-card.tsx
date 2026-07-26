@@ -8,6 +8,7 @@ import { TaskForm } from "@/components/pipeline/task-form";
 import { EditMemberDialog } from "@/components/team/edit-member-dialog";
 import type { Tables } from "@/lib/types/database.types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -30,7 +31,7 @@ export function TeamMemberCard({
 }: {
   member: Tables<"profiles">;
   clients: Pick<Tables<"clients">, "id" | "name">[];
-  profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role">[];
+  profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   onUpdate: (member: Tables<"profiles">) => void;
   onRemoved: (memberId: string) => void;
 }) {
@@ -54,7 +55,14 @@ export function TeamMemberCard({
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="truncate font-medium">{member.full_name}</p>
+            <div className="flex items-center gap-2">
+              <p className="truncate font-medium">{member.full_name}</p>
+              {member.is_external && (
+                <Badge variant="secondary" className="shrink-0">
+                  External
+                </Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">{roleLabel(member.role)}</p>
             <a
               href={`mailto:${member.email}`}

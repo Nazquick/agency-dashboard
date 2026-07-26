@@ -4,7 +4,7 @@ export function DyorHero({ className }: { className?: string }) {
   return (
     <div className={cn("dyor-hero-stage relative overflow-hidden", className)}>
       <video
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        className="pointer-events-none absolute inset-0 h-full w-full scale-[0.6] object-contain sm:scale-100 sm:object-cover"
         src="/video/hero-shader.mp4"
         autoPlay
         muted

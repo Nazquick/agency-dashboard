@@ -9,6 +9,7 @@ import { useUser } from "@/components/providers/user-provider";
 import { isMasterKeyUser, ROLES } from "@/lib/auth/roles";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,17 +27,23 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const memberSchema = z.object({
-  full_name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email"),
-  password: z.string().min(8, "Must be at least 8 characters"),
-  role: z.enum([
-    "team_leader",
-    "editor_designer",
-    "videographer_photographer",
-    "social_media_manager",
-  ]),
-});
+const memberSchema = z
+  .object({
+    full_name: z.string().min(1, "Name is required"),
+    email: z.string().email("Invalid email"),
+    password: z.string().optional(),
+    is_external: z.boolean(),
+    role: z.enum([
+      "team_leader",
+      "editor_designer",
+      "videographer_photographer",
+      "social_media_manager",
+    ]),
+  })
+  .refine((v) => v.is_external || (v.password && v.password.length >= 8), {
+    message: "Must be at least 8 characters",
+    path: ["password"],
+  });
 
 type MemberFormValues = z.infer<typeof memberSchema>;
 
@@ -53,11 +60,14 @@ export function AddMemberDialog({
     handleSubmit,
     control,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<MemberFormValues>({
     resolver: zodResolver(memberSchema),
-    defaultValues: { full_name: "", email: "", password: "", role: undefined },
+    defaultValues: { full_name: "", email: "", password: "", is_external: false, role: undefined },
   });
+  const isExternal = watch("is_external");
 
   if (!isMasterKeyUser(profile.email)) {
     return null;
@@ -78,7 +88,11 @@ export function AddMemberDialog({
       return;
     }
 
-    toast.success(`${values.full_name} can now sign in`);
+    toast.success(
+      values.is_external
+        ? `${values.full_name} added as an external team member`
+        : `${values.full_name} can now sign in`
+    );
     if (body.profile) onSuccess?.(body.profile);
     reset();
     setOpen(false);
@@ -106,18 +120,38 @@ export function AddMemberDialog({
             <Input id="member-email" type="email" {...register("email")} />
             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="member-password">Password</Label>
-            <Input
-              id="member-password"
-              type="password"
-              autoComplete="new-password"
-              {...register("password")}
+          <div className="flex items-start gap-3 rounded-md border p-3">
+            <Checkbox
+              id="member-is-external"
+              checked={isExternal}
+              onCheckedChange={(checked) =>
+                setValue("is_external", checked === true, { shouldValidate: true })
+              }
             />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
-            )}
+            <div>
+              <Label htmlFor="member-is-external" className="font-normal">
+                External team member
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                No dashboard access or sign-in — just assignable to tasks, and visible on the
+                Team page and in reports.
+              </p>
+            </div>
           </div>
+          {!isExternal && (
+            <div className="space-y-2">
+              <Label htmlFor="member-password">Password</Label>
+              <Input
+                id="member-password"
+                type="password"
+                autoComplete="new-password"
+                {...register("password")}
+              />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Role</Label>
             <Controller
@@ -141,8 +175,9 @@ export function AddMemberDialog({
             {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
           </div>
           <p className="text-xs text-muted-foreground">
-            They can sign in with this email and password right away, and change their password
-            themselves afterward.
+            {isExternal
+              ? "No account access is created — they'll just show up as an external option when assigning tasks."
+              : "They can sign in with this email and password right away, and change their password themselves afterward."}
           </p>
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Adding…" : "Add member"}
