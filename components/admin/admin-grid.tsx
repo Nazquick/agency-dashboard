@@ -9,6 +9,7 @@ import { EmailBroadcastDialog } from "@/components/admin/email-broadcast-dialog"
 import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 import { ClientQuotaPanel } from "@/components/admin/client-quota-panel";
 import { AddMemberDialog } from "@/components/team/add-member-dialog";
+import { AdSpendStrategyDownload } from "@/components/admin/ad-spend-strategy-download";
 import type { WorkloadTask } from "@/components/team/workload-kanban";
 import type { Tables } from "@/lib/types/database.types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -140,6 +141,21 @@ export function AdminGrid({
             </div>
             <div className="mt-auto">
               <AddMemberDialog />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex h-full flex-col gap-3 p-4">
+            <div>
+              <h3 className="text-sm font-semibold">Ad spend strategy</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Download our one-pager on Meta ad spend, targeting, and ROAS — safe to send to any
+                client.
+              </p>
+            </div>
+            <div className="mt-auto">
+              <AdSpendStrategyDownload />
             </div>
           </CardContent>
         </Card>
