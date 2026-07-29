@@ -1,4 +1,9 @@
 import { Document, Page, Text, View, StyleSheet, Svg, Path } from "@react-pdf/renderer";
+import {
+  AD_SPEND_CONTENT,
+  type AdSpendLanguage,
+  type AdSpendVariant,
+} from "@/lib/reports/ad-spend-strategy-content";
 
 const BLUE = "#5b86c2";
 const INK = "#111827";
@@ -23,20 +28,23 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     letterSpacing: 0.8,
     fontWeight: 700,
+    maxWidth: 150,
+    textAlign: "center",
+    lineHeight: 1.3,
   },
   rule: { height: 1, backgroundColor: BORDER, marginTop: 10, marginBottom: 12 },
 
-  intro: { fontSize: 10, color: BODY, lineHeight: 1.5, marginBottom: 14 },
+  intro: { fontSize: 10, color: BODY, lineHeight: 1.45, marginBottom: 11 },
 
   sectionTitle: {
     fontSize: 13,
     fontWeight: 700,
-    marginBottom: 7,
+    marginBottom: 6,
     color: INK,
   },
   sectionNum: { color: BLUE },
 
-  cardRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
+  cardRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
   card: {
     flex: 1,
     backgroundColor: PANEL,
@@ -59,17 +67,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  table: { marginBottom: 9 },
+  table: { marginBottom: 7 },
   tableHeaderRow: {
     flexDirection: "row",
     backgroundColor: INK,
-    paddingVertical: 6,
+    paddingVertical: 5,
     paddingHorizontal: 9,
     borderRadius: 3,
   },
   tableRow: {
     flexDirection: "row",
-    paddingVertical: 6,
+    paddingVertical: 5,
     paddingHorizontal: 9,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
@@ -78,10 +86,10 @@ const styles = StyleSheet.create({
   td: { fontSize: 9, color: INK },
   tdMuted: { fontSize: 8.4, color: MUTED },
 
-  variablesRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  variablesRow: { flexDirection: "row", gap: 12, marginBottom: 10 },
   variable: { flex: 1 },
   variableLabel: { fontSize: 8, fontWeight: 700, color: BLUE, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.5 },
-  variableBody: { fontSize: 8.4, color: BODY, lineHeight: 1.4 },
+  variableBody: { fontSize: 8.2, color: BODY, lineHeight: 1.35 },
 
   splitRow: { flexDirection: "row", gap: 20 },
   splitCol: { flex: 1 },
@@ -120,6 +128,38 @@ const styles = StyleSheet.create({
   cornerTR: { position: "absolute", top: 14, right: 18 },
   cornerBL: { position: "absolute", bottom: 12, left: 18 },
   cornerBR: { position: "absolute", bottom: 12, right: 18 },
+
+  // Simplified-variant only
+  simpleIntro: { fontSize: 11, color: BODY, lineHeight: 1.6, marginBottom: 22 },
+  simpleSectionTitle: { fontSize: 15, fontWeight: 700, marginBottom: 12, color: INK },
+  simpleTargetRow: { marginBottom: 12 },
+  simpleTargetTitle: { fontSize: 11, fontWeight: 700, color: INK, marginBottom: 3 },
+  simpleTargetBody: { fontSize: 9.5, color: BODY, lineHeight: 1.5 },
+  tierGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 8 },
+  tierCard: {
+    width: "48.5%",
+    backgroundColor: PANEL,
+    borderRadius: 6,
+    padding: 12,
+    borderTopWidth: 3,
+    borderTopColor: BLUE,
+  },
+  tierTitle: { fontSize: 10.5, fontWeight: 700, color: INK, marginBottom: 3 },
+  tierRange: { fontSize: 14, fontWeight: 700, color: BLUE, marginBottom: 3 },
+  tierUnit: { fontSize: 7.5, color: MUTED, marginBottom: 5 },
+  tierBody: { fontSize: 8.8, color: BODY, lineHeight: 1.4 },
+  simpleBullet: { flexDirection: "row", marginBottom: 8 },
+  simpleBulletDot: { fontSize: 10, color: BLUE, marginRight: 8, fontFamily: "Helvetica-Bold" },
+  simpleBulletText: { fontSize: 10, color: BODY, lineHeight: 1.5, flex: 1 },
+  simpleClosingBand: {
+    marginTop: 18,
+    backgroundColor: INK,
+    borderRadius: 6,
+    padding: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
 });
 
 // Same vector as components/branding/dyor-logo.tsx, redrawn with react-pdf's
@@ -151,171 +191,186 @@ function DyorMark({ style, fill = "#d1d5db" }: { style: object; fill?: string })
   );
 }
 
-export function AdSpendStrategyDocument({ generatedAt }: { generatedAt: string }) {
+function Corners() {
+  return (
+    <>
+      <DyorMark style={styles.cornerTL} />
+      <DyorMark style={styles.cornerTR} />
+      <DyorMark style={styles.cornerBL} />
+      <DyorMark style={styles.cornerBR} />
+    </>
+  );
+}
+
+export function AdSpendStrategyDocument({
+  generatedAt,
+  language = "en",
+  variant = "advanced",
+}: {
+  generatedAt: string;
+  language?: AdSpendLanguage;
+  variant?: AdSpendVariant;
+}) {
+  if (variant === "simple") {
+    const c = AD_SPEND_CONTENT[language].simple;
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <Corners />
+
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.eyebrow}>{c.eyebrow}</Text>
+              <Text style={styles.title}>{c.title}</Text>
+              <Text style={styles.tagline}>{c.tagline}</Text>
+            </View>
+            <Text style={styles.badge}>{c.badge}</Text>
+          </View>
+          <View style={styles.rule} />
+
+          <Text style={styles.simpleIntro}>{c.intro}</Text>
+
+          <Text style={styles.simpleSectionTitle}>{c.section1Title}</Text>
+          {c.targeting.map((t) => (
+            <View style={styles.simpleTargetRow} key={t.title}>
+              <Text style={styles.simpleTargetTitle}>{t.title}</Text>
+              <Text style={styles.simpleTargetBody}>{t.body}</Text>
+            </View>
+          ))}
+
+          <Text style={[styles.simpleSectionTitle, { marginTop: 6 }]}>{c.section2Title}</Text>
+          <View style={styles.tierGrid}>
+            {c.tiers.map((tier) => (
+              <View style={styles.tierCard} key={tier.title}>
+                <Text style={styles.tierTitle}>{tier.title}</Text>
+                <Text style={styles.tierRange}>{tier.range}</Text>
+                <Text style={styles.tierUnit}>{c.tierUnit}</Text>
+                <Text style={styles.tierBody}>{tier.body}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={[styles.simpleSectionTitle, { marginTop: 12 }]}>{c.section3Title}</Text>
+          {c.growth.map((g) => (
+            <View style={styles.simpleBullet} key={g}>
+              <Text style={styles.simpleBulletDot}>•</Text>
+              <Text style={styles.simpleBulletText}>{g}</Text>
+            </View>
+          ))}
+
+          <View style={styles.simpleClosingBand}>
+            <Text style={styles.closingText}>{c.closingText}</Text>
+            <Text style={styles.closingSite}>{c.closingSite}</Text>
+          </View>
+
+          <View style={styles.footer} fixed>
+            <Text>{c.footerTitle}</Text>
+            <Text>
+              {c.preparedLabel} {generatedAt} · {c.confidentialLabel}
+            </Text>
+          </View>
+        </Page>
+      </Document>
+    );
+  }
+
+  const c = AD_SPEND_CONTENT[language].advanced;
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <DyorMark style={styles.cornerTL} />
-        <DyorMark style={styles.cornerTR} />
-        <DyorMark style={styles.cornerBL} />
-        <DyorMark style={styles.cornerBR} />
+        <Corners />
 
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.eyebrow}>DYOR STUDIO</Text>
-            <Text style={styles.title}>Ad Spend & ROAS Strategy</Text>
-            <Text style={styles.tagline}>
-              How we turn a media budget into precise, local reach — and reach into return.
-            </Text>
+            <Text style={styles.eyebrow}>{c.eyebrow}</Text>
+            <Text style={styles.title}>{c.title}</Text>
+            <Text style={styles.tagline}>{c.tagline}</Text>
           </View>
-          <Text style={styles.badge}>META BUSINESS SUITE SPECIALISTS</Text>
+          <Text style={styles.badge}>{c.badge}</Text>
         </View>
         <View style={styles.rule} />
 
-        <Text style={styles.intro}>
-          Every campaign we run is built inside Meta Ads Manager — never the basic &quot;Boost
-          Post&quot; button. That one decision is what gives us structural control over exactly
-          who sees your ad, how often, and at what cost per result. Below is exactly how we
-          target, budget, and grow your following — and what it costs to reach the people who
-          actually matter to your business.
-        </Text>
+        <Text style={styles.intro}>{c.intro}</Text>
 
         <Text style={styles.sectionTitle}>
-          <Text style={styles.sectionNum}>01 · </Text>Precision Targeting, Down to the Person
+          <Text style={styles.sectionNum}>01 · </Text>
+          {c.section1Title}
         </Text>
         <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>High-Intent Audiences</Text>
-            <Text style={styles.cardBody}>
-              The Meta Pixel targets people who took a high-value action — visiting a pricing
-              page, adding to cart — in the last 7–14 days. Customer lists let us re-target real
-              past buyers directly.
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Layered Targeting</Text>
-            <Text style={styles.cardBody}>
-              We set targeting manually at the ad set level, requiring an interest AND a
-              demographic AND, where relevant, a job title to match — cutting broad, wasted
-              reach before a krone is spent.
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Precision Lookalikes</Text>
-            <Text style={styles.cardBody}>
-              Sourced from a seed of 100–1,000+ real buyers, started at a tight 1% match in your
-              target country before ever scaling to a wider 3–5% audience.
-            </Text>
-          </View>
+          {c.cards.map((card) => (
+            <View style={styles.card} key={card.title}>
+              <Text style={styles.cardTitle}>{card.title}</Text>
+              <Text style={styles.cardBody}>{card.body}</Text>
+            </View>
+          ))}
         </View>
 
         <Text style={styles.sectionTitle}>
-          <Text style={styles.sectionNum}>02 · </Text>Budget, Mapped to Results — Before You Spend
+          <Text style={styles.sectionNum}>02 · </Text>
+          {c.section2Title}
         </Text>
-        <Text style={styles.formula}>
-          Total Spend  =  (Target Impressions ÷ 1,000)  ×  CPM
-        </Text>
+        <Text style={styles.formula}>{c.formula}</Text>
         <View style={styles.table}>
           <View style={styles.tableHeaderRow}>
-            <Text style={[styles.th, { width: "26%" }]}>Objective</Text>
-            <Text style={[styles.th, { width: "22%" }]}>Typical Niche CPM</Text>
-            <Text style={[styles.th, { width: "24%" }]}>Cost / 50,000 Impressions</Text>
-            <Text style={[styles.th, { width: "28%" }]}>Best Used For</Text>
+            <Text style={[styles.th, { width: "26%" }]}>{c.tableHeaders[0]}</Text>
+            <Text style={[styles.th, { width: "22%" }]}>{c.tableHeaders[1]}</Text>
+            <Text style={[styles.th, { width: "24%" }]}>{c.tableHeaders[2]}</Text>
+            <Text style={[styles.th, { width: "28%" }]}>{c.tableHeaders[3]}</Text>
           </View>
-          {[
-            ["Awareness / Reach", "$5 – 12", "$250 – 600", "Local visibility, video views"],
-            ["Traffic / Clicks", "$9 – 16", "$450 – 800", "Driving to a page or offer"],
-            ["Lead Generation", "$14 – 22", "$700 – 1,100", "Form fills, sign-ups"],
-            ["Sales / Conversions", "$18 – 28+", "$900 – 1,400+", "Direct e-commerce purchases"],
-          ].map(([obj, cpm, cost, use]) => (
-            <View style={styles.tableRow} key={obj}>
-              <Text style={[styles.td, { width: "26%", fontWeight: 700 }]}>{obj}</Text>
-              <Text style={[styles.td, { width: "22%" }]}>{cpm}</Text>
-              <Text style={[styles.td, { width: "24%" }]}>{cost}</Text>
-              <Text style={[styles.tdMuted, { width: "28%" }]}>{use}</Text>
+          {c.tableRows.map((row) => (
+            <View style={styles.tableRow} key={row.objective}>
+              <Text style={[styles.td, { width: "26%", fontWeight: 700 }]}>{row.objective}</Text>
+              <Text style={[styles.td, { width: "22%" }]}>{row.cpm}</Text>
+              <Text style={[styles.td, { width: "24%" }]}>{row.cost}</Text>
+              <Text style={[styles.tdMuted, { width: "28%" }]}>{row.bestFor}</Text>
             </View>
           ))}
         </View>
         <View style={styles.variablesRow}>
-          <View style={styles.variable}>
-            <Text style={styles.variableLabel}>Location</Text>
-            <Text style={styles.variableBody}>
-              Competitive markets (US, UK) sit at the higher end. Global or developing-region
-              targeting can fall under $5 CPM.
-            </Text>
-          </View>
-          <View style={styles.variable}>
-            <Text style={styles.variableLabel}>Frequency</Text>
-            <Text style={styles.variableBody}>
-              A tight niche repeats — to reach 50,000 unique people you may need to buy
-              75,000–100,000 impressions.
-            </Text>
-          </View>
-          <View style={styles.variable}>
-            <Text style={styles.variableLabel}>Seasonality</Text>
-            <Text style={styles.variableBody}>
-              Q4 (Nov–Dec) costs run 20–40% higher industry-wide due to holiday e-commerce
-              competition.
-            </Text>
-          </View>
+          {c.variables.map((v) => (
+            <View style={styles.variable} key={v.label}>
+              <Text style={styles.variableLabel}>{v.label}</Text>
+              <Text style={styles.variableBody}>{v.body}</Text>
+            </View>
+          ))}
         </View>
 
         <Text style={styles.sectionTitle}>
-          <Text style={styles.sectionNum}>03 · </Text>Engagement That Compounds Into Followers
+          <Text style={styles.sectionNum}>03 · </Text>
+          {c.section3Title}
         </Text>
         <View style={styles.splitRow}>
           <View style={styles.splitCol}>
-            <View style={styles.bullet}>
-              <Text style={styles.bulletDot}>•</Text>
-              <Text style={styles.bulletText}>
-                Set up as an Engagement campaign — Conversion Location &quot;On Your Ad&quot;,
-                optimized for Post Engagement — so Meta shows it to people with a track record of
-                liking, commenting, and sharing in your niche.
-              </Text>
-            </View>
-            <View style={styles.bullet}>
-              <Text style={styles.bulletDot}>•</Text>
-              <Text style={styles.bulletText}>
-                Content is built to be shared — infographics, relatable niche moments, checklist
-                tips — with a clear call to action in every caption.
-              </Text>
-            </View>
-            <View style={styles.bullet}>
-              <Text style={styles.bulletDot}>•</Text>
-              <Text style={styles.bulletText}>
-                Frequency is capped (e.g. once per person, per week) so budget goes toward new
-                reach, not repeating to the same viewer.
-              </Text>
-            </View>
+            {c.bullets.map((b) => (
+              <View style={styles.bullet} key={b}>
+                <Text style={styles.bulletDot}>•</Text>
+                <Text style={styles.bulletText}>{b}</Text>
+              </View>
+            ))}
           </View>
           <View style={{ width: 172 }}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>$6 – 14</Text>
-              <Text style={styles.statLabel}>Engagement CPM (per 1,000 impressions)</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>$300 – 700</Text>
-              <Text style={styles.statLabel}>Cost to reach 50,000 people</Text>
-            </View>
-            <View style={[styles.statBox, { marginBottom: 0 }]}>
-              <Text style={styles.statValue}>$0.05 – 0.30</Text>
-              <Text style={styles.statLabel}>Per like, comment, or share</Text>
-            </View>
+            {c.stats.map((s, i) => (
+              <View
+                style={i === c.stats.length - 1 ? [styles.statBox, { marginBottom: 0 }] : styles.statBox}
+                key={s.label}
+              >
+                <Text style={styles.statValue}>{s.value}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
         <View style={styles.closingBand}>
-          <Text style={styles.closingText}>
-            Every krone is planned, targeted, and reported on inside Meta Ads Manager — built
-            around your business, your local audience, and your ROAS. That&apos;s the DYOR
-            standard.
-          </Text>
-          <Text style={styles.closingSite}>dyor.studio</Text>
+          <Text style={styles.closingText}>{c.closingText}</Text>
+          <Text style={styles.closingSite}>{c.closingSite}</Text>
         </View>
 
         <View style={styles.footer} fixed>
-          <Text>DYOR Studio — Ad Spend & ROAS Strategy</Text>
-          <Text>Prepared {generatedAt} · Confidential</Text>
+          <Text>{c.footerTitle}</Text>
+          <Text>
+            {c.preparedLabel} {generatedAt} · {c.confidentialLabel}
+          </Text>
         </View>
       </Page>
     </Document>
