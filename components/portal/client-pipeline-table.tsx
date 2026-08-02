@@ -6,7 +6,7 @@ import { createRealtimeClient } from "@/lib/supabase/realtime-client";
 import {
   STATUSES,
   STATUS_BADGE_CLASS,
-  TASK_TYPES,
+  contentTypeLabel,
   statusLabel,
   type TaskStatus,
 } from "@/lib/tasks/constants";
@@ -32,7 +32,7 @@ const ALL = "__all__";
 
 function taskTypeLabel(value: string | null): string {
   if (!value) return "—";
-  return TASK_TYPES.find((t) => t.value === value)?.label ?? value;
+  return contentTypeLabel(value);
 }
 
 function formatDeadline(value: string | null) {

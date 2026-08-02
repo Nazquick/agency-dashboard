@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useUser } from "@/components/providers/user-provider";
+import { useUser, useRoles } from "@/components/providers/user-provider";
 import { PipelineBadge } from "@/components/nav/pipeline-badge";
 import { AdminQuotaBadge } from "@/components/nav/admin-quota-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -49,6 +49,7 @@ export function TopTabs() {
   const pathname = usePathname();
   const router = useRouter();
   const profile = useUser();
+  const roles = useRoles();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
@@ -128,7 +129,7 @@ export function TopTabs() {
                 <div className="flex flex-col">
                   <span className="font-medium">{profile.full_name}</span>
                   <span className="text-xs font-normal text-muted-foreground">
-                    {roleLabel(profile.role)}
+                    {roleLabel(profile.role, roles)}
                   </span>
                 </div>
               </DropdownMenuLabel>
@@ -178,7 +179,7 @@ export function TopTabs() {
               </Avatar>
               <div className="flex flex-col leading-tight">
                 <span className="text-sm font-medium">{profile.full_name}</span>
-                <span className="text-xs text-muted-foreground">{roleLabel(profile.role)}</span>
+                <span className="text-xs text-muted-foreground">{roleLabel(profile.role, roles)}</span>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">

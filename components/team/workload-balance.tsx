@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ROLES, type UserRole } from "@/lib/auth/roles";
+import { useRoles } from "@/components/providers/user-provider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { WorkloadTask } from "@/components/team/workload-kanban";
@@ -34,22 +34,19 @@ function verdictFor(count: number, average: number): Verdict {
 }
 
 export function WorkloadBalance({ tasks }: { tasks: WorkloadTask[] }) {
+  const allRoles = useRoles();
+  const roles = useMemo(() => allRoles.filter((r) => r.value !== "client"), [allRoles]);
+
   const roleCounts = useMemo(() => {
-    const counts: Record<UserRole, number> = {
-      editor_designer: 0,
-      videographer_photographer: 0,
-      social_media_manager: 0,
-      team_leader: 0,
-      client: 0,
-    };
+    const counts: Record<string, number> = {};
     for (const t of tasks) {
-      if (t.assignee) counts[t.assignee.role] += 1;
+      if (t.assignee) counts[t.assignee.role] = (counts[t.assignee.role] ?? 0) + 1;
     }
     return counts;
   }, [tasks]);
 
-  const average = ROLES.reduce((sum, r) => sum + roleCounts[r.value], 0) / ROLES.length;
-  const maxCount = Math.max(1, ...ROLES.map((r) => roleCounts[r.value]));
+  const average = roles.reduce((sum, r) => sum + (roleCounts[r.value] ?? 0), 0) / (roles.length || 1);
+  const maxCount = Math.max(1, ...roles.map((r) => roleCounts[r.value] ?? 0));
 
   return (
     <div className="space-y-3">
@@ -60,8 +57,8 @@ export function WorkloadBalance({ tasks }: { tasks: WorkloadTask[] }) {
         </p>
       </div>
       <div className="space-y-3 rounded-lg border bg-card p-4">
-        {ROLES.map((role) => {
-          const count = roleCounts[role.value];
+        {roles.map((role) => {
+          const count = roleCounts[role.value] ?? 0;
           const verdict = verdictFor(count, average);
           return (
             <div key={role.value} className="space-y-1">

@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { useUser } from "@/components/providers/user-provider";
-import { ROLES, roleLabel } from "@/lib/auth/roles";
+import { useUser, useRoles } from "@/components/providers/user-provider";
+import { roleLabel } from "@/lib/auth/roles";
 import type { Tables } from "@/lib/types/database.types";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,7 @@ export function SalaryPanel({
   initialSalaries: Tables<"profile_salaries">[];
 }) {
   const actor = useUser();
+  const roles = useRoles();
 
   const [salaries, setSalaries] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {};
@@ -57,7 +58,13 @@ export function SalaryPanel({
     return counts;
   }, [tasks]);
 
-  const average = ROLES.reduce((sum, r) => sum + (roleCounts[r.value] ?? 0), 0) / ROLES.length;
+  // Average over roles actually represented on the team, not the whole
+  // roles catalog — an unused custom role shouldn't dilute the baseline.
+  const memberRoles = Array.from(new Set(members.map((m) => m.role)));
+  const average =
+    memberRoles.length > 0
+      ? memberRoles.reduce((sum, r) => sum + (roleCounts[r] ?? 0), 0) / memberRoles.length
+      : 0;
 
   async function saveSalary(profileId: string, value: number) {
     setSavingId(profileId);
@@ -97,7 +104,7 @@ export function SalaryPanel({
               return (
                 <tr key={member.id} className="border-b last:border-0">
                   <td className="px-4 py-2 font-medium">{member.full_name}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{roleLabel(member.role)}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{roleLabel(member.role, roles)}</td>
                   <td className="px-4 py-2 text-muted-foreground">{count}</td>
                   <td className="px-4 py-2">
                     <Input

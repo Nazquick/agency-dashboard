@@ -1,4 +1,8 @@
-import { ROLES, type UserRole } from "@/lib/auth/roles";
+"use client";
+
+import { useMemo } from "react";
+import type { UserRole } from "@/lib/auth/roles";
+import { useRoles } from "@/components/providers/user-provider";
 import { PRIORITY_BADGE_CLASS, priorityLabel } from "@/lib/tasks/constants";
 import type { Tables } from "@/lib/types/database.types";
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +13,18 @@ export type WorkloadTask = Pick<Tables<"tasks">, "id" | "title" | "priority" | "
 };
 
 export function WorkloadKanban({ tasks }: { tasks: WorkloadTask[] }) {
-  const columns = ROLES.map((role) => ({
-    role: role.value,
-    label: role.label,
-    tasks: tasks.filter((t) => t.assignee?.role === role.value),
-  }));
+  const allRoles = useRoles();
+  const columns = useMemo(
+    () =>
+      allRoles
+        .filter((r) => r.value !== "client")
+        .map((role) => ({
+          role: role.value,
+          label: role.label,
+          tasks: tasks.filter((t) => t.assignee?.role === role.value),
+        })),
+    [allRoles, tasks]
+  );
 
   return (
     <div className="space-y-3">

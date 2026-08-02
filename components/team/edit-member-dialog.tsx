@@ -6,20 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { useUser } from "@/components/providers/user-provider";
-import { isMasterKeyUser, isTeamLeader, ROLES, type UserRole } from "@/lib/auth/roles";
+import { useUser, useRoles, useAddRole } from "@/components/providers/user-provider";
+import { isMasterKeyUser, isTeamLeader, type UserRole } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
 import type { Tables } from "@/lib/types/database.types";
+import { RoleSelect } from "@/components/team/role-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -32,12 +26,7 @@ const memberSchema = z.object({
   full_name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
   phone: z.string().optional(),
-  role: z.enum([
-    "team_leader",
-    "editor_designer",
-    "videographer_photographer",
-    "social_media_manager",
-  ]),
+  role: z.string().min(1, "Role is required"),
 });
 
 type MemberFormValues = z.infer<typeof memberSchema>;
@@ -54,6 +43,8 @@ export function EditMemberDialog({
   onRemoved?: (memberId: string) => void;
 }) {
   const actor = useUser();
+  const roles = useRoles();
+  const addRole = useAddRole();
   const canEditRole = isTeamLeader(actor.role);
   const canEditEmail = isMasterKeyUser(actor.email);
   const canRemove = isMasterKeyUser(actor.email) && actor.id !== member.id;
@@ -293,18 +284,13 @@ export function EditMemberDialog({
                 name="role"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLES.map((r) => (
-                        <SelectItem key={r.value} value={r.value}>
-                          {r.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <RoleSelect
+                    roles={roles}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onRoleCreated={addRole}
+                    allowCreate={isMasterKeyUser(actor.email)}
+                  />
                 )}
               />
             </div>

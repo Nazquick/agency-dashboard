@@ -14,15 +14,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-// Blank stays null ("no limit"), not 0 — same convention as full-report-form.tsx.
-const limit = () =>
-  z.preprocess((val) => (val === "" ? undefined : val), z.coerce.number().int().min(0).optional());
+// Blank stays null ("no limit" / "no fee set"), not 0 — same convention as
+// full-report-form.tsx.
+const optionalNumber = () =>
+  z.preprocess((val) => (val === "" ? undefined : val), z.coerce.number().min(0).optional());
 
 const clientSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
-  monthly_task_limit: limit(),
-  quarterly_task_limit: limit(),
+  monthly_credit_limit: optionalNumber(),
+  monthly_fee: optionalNumber(),
 });
 
 type ClientFormValues = z.input<typeof clientSchema>;
@@ -46,8 +47,8 @@ export function ClientForm({
     defaultValues: {
       name: client?.name ?? "",
       description: client?.description ?? "",
-      monthly_task_limit: client ? (client.monthly_task_limit ?? undefined) : 16,
-      quarterly_task_limit: client ? (client.quarterly_task_limit ?? undefined) : 40,
+      monthly_credit_limit: client ? (client.monthly_credit_limit ?? undefined) : 8,
+      monthly_fee: client?.monthly_fee ?? undefined,
     },
   });
 
@@ -58,8 +59,8 @@ export function ClientForm({
     const payload = {
       name: values.name,
       description: values.description || null,
-      monthly_task_limit: values.monthly_task_limit ?? null,
-      quarterly_task_limit: values.quarterly_task_limit ?? null,
+      monthly_credit_limit: values.monthly_credit_limit ?? null,
+      monthly_fee: values.monthly_fee ?? null,
     };
 
     const result = client
@@ -97,16 +98,18 @@ export function ClientForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="monthly_task_limit">Monthly task limit</Label>
-          <Input id="monthly_task_limit" type="number" min={0} {...register("monthly_task_limit")} />
+          <Label htmlFor="monthly_credit_limit">Monthly credit limit</Label>
+          <Input id="monthly_credit_limit" type="number" min={0} {...register("monthly_credit_limit")} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="quarterly_task_limit">Quarterly task limit</Label>
-          <Input id="quarterly_task_limit" type="number" min={0} {...register("quarterly_task_limit")} />
+          <Label htmlFor="monthly_fee">Monthly fee (kr)</Label>
+          <Input id="monthly_fee" type="number" min={0} step="0.01" {...register("monthly_fee")} />
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Standard credit is 4 tasks/assets a week (~16/month, 40/quarter). Leave blank for no limit.
+        Standard credit is 8/month, weighted by content type. Leave the limit blank for no cap. The
+        monthly fee is required before this client can top up credits from the portal (top-up costs
+        50% of it).
       </p>
       <Button type="submit" disabled={loading}>
         {loading ? "Saving…" : client ? "Save changes" : "Create client"}

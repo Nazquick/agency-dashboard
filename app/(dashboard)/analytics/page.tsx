@@ -15,7 +15,7 @@ export default async function AnalyticsPage() {
     { data: reports },
   ] = await Promise.all([
     supabase.from("clients").select("*").eq("archived", false).order("name"),
-    supabase.from("tasks").select("client_id, created_at"),
+    supabase.from("tasks").select("client_id, created_at, task_type, archived"),
     supabase.from("calendar_events").select("client_id, created_at"),
     supabase.from("client_social_accounts").select("*"),
     supabase.from("content_assets").select("*"),
@@ -27,7 +27,14 @@ export default async function AnalyticsPage() {
   return (
     <AnalyticsDashboard
       clients={clients ?? []}
-      tasks={(tasks ?? []).filter((t) => t.client_id) as { client_id: string; created_at: string }[]}
+      tasks={
+        (tasks ?? []).filter((t) => t.client_id) as {
+          client_id: string;
+          created_at: string;
+          task_type: string | null;
+          archived: boolean;
+        }[]
+      }
       events={(events ?? []).filter((e) => e.client_id) as { client_id: string; created_at: string }[]}
       initialSocialAccounts={socialAccounts ?? []}
       initialAssets={assets ?? []}

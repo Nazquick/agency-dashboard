@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { UserProvider } from "@/components/providers/user-provider";
+import { UserProvider, RolesProvider } from "@/components/providers/user-provider";
 import { SessionHeartbeat } from "@/components/providers/session-heartbeat";
 import { TopTabs } from "@/components/nav/top-tabs";
 
@@ -19,11 +19,10 @@ export default async function DashboardLayout({
     redirect("/");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const [{ data: profile }, { data: roles }] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("roles").select("value, label").order("label"),
+  ]);
 
   if (!profile) {
     redirect("/");
@@ -35,11 +34,13 @@ export default async function DashboardLayout({
 
   return (
     <UserProvider profile={profile}>
-      <div className="min-h-screen bg-muted/40">
-        <SessionHeartbeat userId={profile.id} />
-        <TopTabs />
-        <main className="mx-auto max-w-7xl p-4 sm:p-6">{children}</main>
-      </div>
+      <RolesProvider roles={roles ?? []}>
+        <div className="min-h-screen bg-muted/40">
+          <SessionHeartbeat userId={profile.id} />
+          <TopTabs />
+          <main className="mx-auto max-w-7xl p-4 sm:p-6">{children}</main>
+        </div>
+      </RolesProvider>
     </UserProvider>
   );
 }

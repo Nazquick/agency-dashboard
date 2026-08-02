@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
-import { computeQuotaStatus } from "@/lib/analytics/quota";
+import { computeCreditStatus } from "@/lib/analytics/quota";
 
 export function AdminQuotaBadge() {
   const [count, setCount] = useState<number | null>(null);
@@ -14,15 +14,13 @@ export function AdminQuotaBadge() {
     let cancelled = false;
 
     async function refreshCount() {
-      const [{ data: clients }, { data: tasks }] = await Promise.all([
-        supabase
-          .from("clients")
-          .select("id, name, monthly_task_limit, quarterly_task_limit")
-          .eq("archived", false),
-        supabase.from("tasks").select("client_id, created_at"),
+      const [{ data: clients }, { data: tasks }, { data: topups }] = await Promise.all([
+        supabase.from("clients").select("id, name, monthly_credit_limit").eq("archived", false),
+        supabase.from("tasks").select("client_id, created_at, task_type, archived"),
+        supabase.from("credit_topups").select("client_id, period_start, credits_added"),
       ]);
-      const statuses = computeQuotaStatus(clients ?? [], tasks ?? []);
-      setCount(statuses.filter((s) => s.overMonthly || s.overQuarterly).length);
+      const statuses = computeCreditStatus(clients ?? [], tasks ?? [], topups ?? []);
+      setCount(statuses.filter((s) => s.over).length);
     }
 
     async function setup() {
@@ -35,6 +33,7 @@ export function AdminQuotaBadge() {
         .channel("admin-quota-badge")
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refreshCount)
         .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, refreshCount)
+        .on("postgres_changes", { event: "*", schema: "public", table: "credit_topups" }, refreshCount)
         .subscribe();
     }
 

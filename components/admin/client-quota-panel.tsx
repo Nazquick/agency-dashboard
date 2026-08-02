@@ -6,8 +6,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
-import { computeQuotaStatus } from "@/lib/analytics/quota";
-import { startOfCurrentMonthIso, startOfTrailingQuarterIso } from "@/lib/analytics/metrics";
+import { computeCreditStatus } from "@/lib/analytics/quota";
+import { startOfCurrentMonthIso } from "@/lib/analytics/metrics";
+import { creditsFor } from "@/lib/tasks/constants";
 import type { Tables } from "@/lib/types/database.types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,30 +17,41 @@ const OVERAGE_CHARGE = 3000;
 
 type QuotaTask = Pick<
   Tables<"tasks">,
-  "id" | "title" | "client_id" | "created_at" | "status" | "overage_charged"
+  "id" | "title" | "client_id" | "created_at" | "status" | "overage_charged" | "task_type" | "archived"
 >;
-type QuotaClient = Pick<
-  Tables<"clients">,
-  "id" | "name" | "monthly_task_limit" | "quarterly_task_limit"
->;
+type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit">;
+type QuotaTopup = Pick<Tables<"credit_topups">, "client_id" | "period_start" | "credits_added">;
 
+// Walk a client's tasks for the month chronologically, accumulating
+// credits — every task from the one that first pushes the running total
+// past the limit onward is billable overage.
 function overageTaskIds(tasks: QuotaTask[], limit: number | null, sinceIso: string): Set<string> {
   if (limit == null) return new Set();
   const inWindow = tasks
-    .filter((t) => t.created_at >= sinceIso)
+    .filter((t) => t.created_at >= sinceIso && !t.archived)
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
-  return new Set(inWindow.slice(limit).map((t) => t.id));
+
+  const overage = new Set<string>();
+  let running = 0;
+  for (const t of inWindow) {
+    running += creditsFor(t.task_type);
+    if (running > limit) overage.add(t.id);
+  }
+  return overage;
 }
 
 export function ClientQuotaPanel({
   clients,
   initialTasks,
+  initialTopups,
 }: {
   clients: QuotaClient[];
   initialTasks: QuotaTask[];
+  initialTopups: QuotaTopup[];
 }) {
   const actor = useUser();
   const [tasks, setTasks] = useState(initialTasks);
+  const [topups, setTopups] = useState(initialTopups);
   const [chargingId, setChargingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,10 +60,14 @@ export function ClientQuotaPanel({
     let cancelled = false;
 
     async function refetch() {
-      const { data } = await supabase
-        .from("tasks")
-        .select("id, title, client_id, created_at, status, overage_charged");
-      if (data) setTasks(data);
+      const [{ data: taskRows }, { data: topupRows }] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("id, title, client_id, created_at, status, overage_charged, task_type, archived"),
+        supabase.from("credit_topups").select("client_id, period_start, credits_added"),
+      ]);
+      if (taskRows) setTasks(taskRows);
+      if (topupRows) setTopups(topupRows);
     }
 
     async function setup() {
@@ -60,6 +76,7 @@ export function ClientQuotaPanel({
       channel = supabase
         .channel("client-quota-panel")
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refetch)
+        .on("postgres_changes", { event: "*", schema: "public", table: "credit_topups" }, refetch)
         .subscribe();
     }
 
@@ -72,12 +89,11 @@ export function ClientQuotaPanel({
   }, []);
 
   const overClients = useMemo(() => {
-    const statuses = computeQuotaStatus(clients, tasks);
-    return statuses.filter((s) => s.overMonthly || s.overQuarterly);
-  }, [clients, tasks]);
+    const statuses = computeCreditStatus(clients, tasks, topups);
+    return statuses.filter((s) => s.over);
+  }, [clients, tasks, topups]);
 
   const monthStart = startOfCurrentMonthIso();
-  const quarterStart = startOfTrailingQuarterIso();
 
   async function chargeOverage(task: QuotaTask, clientName: string) {
     setChargingId(task.id);
@@ -110,22 +126,16 @@ export function ClientQuotaPanel({
   if (overClients.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No clients are over their monthly or quarterly credit right now.
+        No clients are over their monthly credit right now.
       </p>
     );
   }
 
   return (
     <div className="space-y-6">
-      {overClients.map(({ client, monthlyUsed, monthlyLimit, overMonthly, quarterlyUsed, quarterlyLimit, overQuarterly }) => {
+      {overClients.map(({ client, used, limit }) => {
         const clientTasks = tasks.filter((t) => t.client_id === client.id);
-        const monthlyOverageIds = overMonthly
-          ? overageTaskIds(clientTasks, monthlyLimit, monthStart)
-          : new Set<string>();
-        const quarterlyOverageIds = overQuarterly
-          ? overageTaskIds(clientTasks, quarterlyLimit, quarterStart)
-          : new Set<string>();
-        const overageIds = new Set([...monthlyOverageIds, ...quarterlyOverageIds]);
+        const overageIds = overageTaskIds(clientTasks, limit, monthStart);
         const overageTasks = clientTasks
           .filter((t) => overageIds.has(t.id))
           .sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -134,18 +144,9 @@ export function ClientQuotaPanel({
           <div key={client.id} className="space-y-3 rounded-lg border p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium">{client.name}</span>
-              <div className="flex gap-2">
-                {overMonthly && (
-                  <Badge variant="destructive">
-                    {monthlyUsed}/{monthlyLimit} this month
-                  </Badge>
-                )}
-                {overQuarterly && (
-                  <Badge variant="destructive">
-                    {quarterlyUsed}/{quarterlyLimit} this quarter
-                  </Badge>
-                )}
-              </div>
+              <Badge variant="destructive">
+                {used}/{limit} credits this month
+              </Badge>
             </div>
 
             <div className="space-y-2">

@@ -3,13 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMasterKeyUser } from "@/lib/auth/roles";
 
-const VALID_ROLES = [
-  "editor_designer",
-  "videographer_photographer",
-  "social_media_manager",
-  "team_leader",
-];
-
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -42,7 +35,20 @@ export async function POST(request: Request) {
     is_external?: boolean;
   };
 
-  if (!email || !full_name || !role || !VALID_ROLES.includes(role)) {
+  if (!email || !full_name || !role) {
+    return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  const { data: roleRow } = await admin
+    .from("roles")
+    .select("value")
+    .eq("value", role)
+    .eq("assignable", true)
+    .maybeSingle();
+
+  if (!roleRow) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
 
@@ -55,7 +61,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
 
-  const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.createUser({
     email,
     password: effectivePassword,

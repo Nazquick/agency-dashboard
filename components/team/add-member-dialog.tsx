@@ -5,20 +5,14 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useUser } from "@/components/providers/user-provider";
-import { isMasterKeyUser, ROLES } from "@/lib/auth/roles";
+import { useUser, useRoles, useAddRole } from "@/components/providers/user-provider";
+import { isMasterKeyUser } from "@/lib/auth/roles";
 import type { Tables } from "@/lib/types/database.types";
+import { RoleSelect } from "@/components/team/role-select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -33,12 +27,7 @@ const memberSchema = z
     email: z.string().email("Invalid email"),
     password: z.string().optional(),
     is_external: z.boolean(),
-    role: z.enum([
-      "team_leader",
-      "editor_designer",
-      "videographer_photographer",
-      "social_media_manager",
-    ]),
+    role: z.string().min(1, "Role is required"),
   })
   .refine((v) => v.is_external || (v.password && v.password.length >= 8), {
     message: "Must be at least 8 characters",
@@ -53,6 +42,8 @@ export function AddMemberDialog({
   onSuccess?: (member: Tables<"profiles">) => void;
 }) {
   const profile = useUser();
+  const roles = useRoles();
+  const addRole = useAddRole();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const {
@@ -158,18 +149,13 @@ export function AddMemberDialog({
               name="role"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <RoleSelect
+                  roles={roles}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onRoleCreated={addRole}
+                  allowCreate
+                />
               )}
             />
             {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}

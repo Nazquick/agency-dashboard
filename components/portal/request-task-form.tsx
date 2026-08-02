@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
 import { logActivity } from "@/lib/activity/log";
-import { TASK_TYPES, PRIORITIES } from "@/lib/tasks/constants";
+import { CONTENT_TYPES, PRIORITIES } from "@/lib/tasks/constants";
+import { leadTimeViolation } from "@/lib/tasks/lead-time";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +56,13 @@ export function RequestTaskForm({ clientId }: { clientId: string }) {
   });
 
   async function onSubmit(values: RequestFormValues) {
+    const deadlineIso = values.deadline ? new Date(values.deadline).toISOString() : null;
+    const violation = leadTimeViolation(values.task_type, deadlineIso, true);
+    if (violation) {
+      toast.error(violation);
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
 
@@ -65,7 +73,7 @@ export function RequestTaskForm({ clientId }: { clientId: string }) {
         description: values.description || null,
         task_type: values.task_type || null,
         client_id: clientId,
-        deadline: values.deadline ? new Date(values.deadline).toISOString() : null,
+        deadline: deadlineIso,
         priority: values.priority,
         status: "not_started",
         assignee_id: null,
@@ -132,7 +140,7 @@ export function RequestTaskForm({ clientId }: { clientId: string }) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>None</SelectItem>
-                        {TASK_TYPES.map((t) => (
+                        {CONTENT_TYPES.map((t) => (
                           <SelectItem key={t.value} value={t.value}>
                             {t.label}
                           </SelectItem>

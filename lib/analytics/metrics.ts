@@ -1,4 +1,5 @@
 import type { Tables } from "@/lib/types/database.types";
+import { creditsFor } from "@/lib/tasks/constants";
 
 export type Asset = Tables<"content_assets">;
 
@@ -79,25 +80,21 @@ export function startOfCurrentMonthIso(): string {
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 }
 
-export function tasksThisMonth(
-  tasks: Pick<Tables<"tasks">, "client_id" | "created_at">[],
+// "YYYY-MM-01" for the current calendar month, in local time — used to key
+// credit_topups.period_start, so this must match how the server-side
+// top-up route computes it (both use local calendar components, not a
+// UTC-shifted ISO string, which can land on the wrong day near midnight).
+export function currentPeriodStart(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+export function creditsUsedInMonth(
+  tasks: Pick<Tables<"tasks">, "client_id" | "created_at" | "task_type" | "archived">[],
   clientId: string
 ): number {
   const start = startOfCurrentMonthIso();
-  return tasks.filter((t) => t.client_id === clientId && t.created_at >= start).length;
-}
-
-// This month plus the two before it — calendar-aligned like
-// startOfCurrentMonthIso, not a rolling 90-day window.
-export function startOfTrailingQuarterIso(): string {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
-}
-
-export function tasksInQuarter(
-  tasks: Pick<Tables<"tasks">, "client_id" | "created_at">[],
-  clientId: string
-): number {
-  const start = startOfTrailingQuarterIso();
-  return tasks.filter((t) => t.client_id === clientId && t.created_at >= start).length;
+  return tasks
+    .filter((t) => t.client_id === clientId && t.created_at >= start && !t.archived)
+    .reduce((sum, t) => sum + creditsFor(t.task_type), 0);
 }

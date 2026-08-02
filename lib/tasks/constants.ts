@@ -3,15 +3,34 @@ import type { Database } from "@/lib/types/database.types";
 export type TaskPriority = Database["public"]["Enums"]["task_priority"];
 export type TaskStatus = Database["public"]["Enums"]["task_status"];
 
-export const TASK_TYPES = [
-  { value: "video_shoot", label: "Video shoot" },
-  { value: "video_edit", label: "Video edit" },
-  { value: "photo_shoot", label: "Photo shoot" },
-  { value: "graphic_design", label: "Graphic design" },
-  { value: "social_post", label: "Social post" },
-  { value: "admin", label: "Admin" },
-  { value: "other", label: "Other" },
+// Content type drives both the quota credit cost and the minimum lead time
+// (hours between now and the deadline) required for a client task — one
+// dropdown value for both, instead of two parallel classification fields.
+export const CONTENT_TYPES: { value: string; label: string; credits: number; minLeadHours: number }[] = [
+  { value: "video_edit", label: "Video (with edit)", credits: 2, minLeadHours: 72 },
+  { value: "video_raw", label: "Video (raw moment)", credits: 1, minLeadHours: 72 },
+  { value: "graphics", label: "Graphics", credits: 1, minLeadHours: 24 },
+  { value: "image_with_graphics", label: "Image (with graphics)", credits: 2, minLeadHours: 24 },
+  { value: "image", label: "Image", credits: 1, minLeadHours: 24 },
+  { value: "ai_image_with_graphics", label: "AI image (with graphics)", credits: 1, minLeadHours: 24 },
+  { value: "stories_3", label: "3x stories", credits: 1, minLeadHours: 24 },
+  { value: "stories_12", label: "12x stories", credits: 3, minLeadHours: 24 },
+  { value: "meeting", label: "Meeting", credits: 0, minLeadHours: 48 },
+  { value: "admin", label: "Admin", credits: 0, minLeadHours: 0 },
+  { value: "other", label: "Other", credits: 0, minLeadHours: 0 },
 ];
+
+export function contentTypeLabel(value: string | null): string {
+  return CONTENT_TYPES.find((t) => t.value === value)?.label ?? value ?? "";
+}
+
+export function creditsFor(value: string | null): number {
+  return CONTENT_TYPES.find((t) => t.value === value)?.credits ?? 0;
+}
+
+export function minLeadHoursFor(value: string | null): number {
+  return CONTENT_TYPES.find((t) => t.value === value)?.minLeadHours ?? 0;
+}
 
 export const PRIORITIES: { value: TaskPriority; label: string }[] = [
   { value: "low", label: "Low" },

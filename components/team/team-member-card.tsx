@@ -1,7 +1,7 @@
 "use client";
 
 import { Phone, MessageSquare, Mail, ListPlus, Pencil } from "lucide-react";
-import { useUser } from "@/components/providers/user-provider";
+import { useUser, useRoles } from "@/components/providers/user-provider";
 import { roleLabel } from "@/lib/auth/roles";
 import { colorForId } from "@/lib/colors";
 import { TaskForm } from "@/components/pipeline/task-form";
@@ -36,6 +36,7 @@ export function TeamMemberCard({
   onRemoved: (memberId: string) => void;
 }) {
   const actor = useUser();
+  const roles = useRoles();
   const canEdit = actor.id === member.id || actor.role === "team_leader";
   const hasPhone = Boolean(member.phone);
   // wa.me needs the full international number as digits only — no "+", spaces, or dashes.
@@ -63,7 +64,7 @@ export function TeamMemberCard({
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">{roleLabel(member.role)}</p>
+            <p className="text-sm text-muted-foreground">{roleLabel(member.role, roles)}</p>
             <a
               href={`mailto:${member.email}`}
               className="block truncate text-sm text-primary underline underline-offset-4"

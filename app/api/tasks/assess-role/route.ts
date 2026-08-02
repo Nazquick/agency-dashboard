@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
-import { ROLES, type UserRole } from "@/lib/auth/roles";
+import type { UserRole } from "@/lib/auth/roles";
 
-const ROLE_VALUES = ROLES.map((r) => r.value) as [UserRole, ...UserRole[]];
+// The AI's guidance text below only describes these 4 roles by name, so
+// assignment stays scoped to them regardless of any custom roles Nasir has
+// since added — a custom role has no semantic guidance for the AI to use.
+const ROLE_VALUES = [
+  "team_leader",
+  "editor_designer",
+  "videographer_photographer",
+  "social_media_manager",
+] as const;
 
 export async function POST(request: Request) {
   const supabase = await createClient();

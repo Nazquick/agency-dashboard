@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pencil } from "lucide-react";
-import { useUser } from "@/components/providers/user-provider";
+import { useUser, useRoles } from "@/components/providers/user-provider";
 import { isMasterKeyUser, roleLabel } from "@/lib/auth/roles";
 import { TeamMemberCard } from "@/components/team/team-member-card";
 import { EditMemberDialog } from "@/components/team/edit-member-dialog";
@@ -33,6 +33,7 @@ export function TeamGrid({
   initialRoleRequests: RoleChangeRequestWithRelations[];
 }) {
   const actor = useUser();
+  const roles = useRoles();
   const [members, setMembers] = useState(initialMembers);
   const [deactivatedMembers, setDeactivatedMembers] = useState(initialDeactivatedMembers);
   const internalMembers = members.filter((m) => !m.is_external);
@@ -143,7 +144,7 @@ export function TeamGrid({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{member.full_name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {roleLabel(member.role)}
+                    {roleLabel(member.role, roles)}
                     {member.is_external ? " · External" : ""} · {member.email}
                   </p>
                 </div>

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
-import { useUser } from "@/components/providers/user-provider";
+import { useUser, useRoles } from "@/components/providers/user-provider";
 import { isMasterKeyUser, roleLabel } from "@/lib/auth/roles";
 import { activityLabel, formatDuration } from "@/lib/activity/constants";
 import type { Tables } from "@/lib/types/database.types";
@@ -37,6 +37,7 @@ export function MemberActivityPanel({
   initialActivity: Tables<"activity_log">[];
 }) {
   const actor = useUser();
+  const roles = useRoles();
   const [sessions, setSessions] = useState(initialSessions);
   const [activity, setActivity] = useState(initialActivity);
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
@@ -125,7 +126,7 @@ export function MemberActivityPanel({
                 <TableRow key={member.id}>
                   <TableCell>
                     <div className="font-medium">{member.full_name}</div>
-                    <div className="text-xs text-muted-foreground">{roleLabel(member.role)}</div>
+                    <div className="text-xs text-muted-foreground">{roleLabel(member.role, roles)}</div>
                   </TableCell>
                   <TableCell>{logins}</TableCell>
                   <TableCell>{formatDuration(totalSeconds)}</TableCell>

@@ -472,9 +472,9 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
-          monthly_task_limit: number | null
+          monthly_credit_limit: number | null
+          monthly_fee: number | null
           name: string
-          quarterly_task_limit: number | null
         }
         Insert: {
           archived?: boolean
@@ -483,9 +483,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
-          monthly_task_limit?: number | null
+          monthly_credit_limit?: number | null
+          monthly_fee?: number | null
           name: string
-          quarterly_task_limit?: number | null
         }
         Update: {
           archived?: boolean
@@ -494,9 +494,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
-          monthly_task_limit?: number | null
+          monthly_credit_limit?: number | null
+          monthly_fee?: number | null
           name?: string
-          quarterly_task_limit?: number | null
         }
         Relationships: [
           {
@@ -660,6 +660,51 @@ export type Database = {
             columns: ["reported_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_topups: {
+        Row: {
+          approved_by: string | null
+          charge_amount: number
+          client_id: string
+          created_at: string
+          credits_added: number
+          id: string
+          period_start: string
+        }
+        Insert: {
+          approved_by?: string | null
+          charge_amount: number
+          client_id: string
+          created_at?: string
+          credits_added: number
+          id?: string
+          period_start: string
+        }
+        Update: {
+          approved_by?: string | null
+          charge_amount?: number
+          client_id?: string
+          created_at?: string
+          credits_added?: number
+          id?: string
+          period_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_topups_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_topups_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -829,7 +874,7 @@ export type Database = {
           id: string
           is_external: boolean
           phone: string | null
-          role: Database["public"]["Enums"]["user_role"]
+          role: string
         }
         Insert: {
           active?: boolean
@@ -841,7 +886,7 @@ export type Database = {
           id: string
           is_external?: boolean
           phone?: string | null
-          role: Database["public"]["Enums"]["user_role"]
+          role: string
         }
         Update: {
           active?: boolean
@@ -853,7 +898,7 @@ export type Database = {
           id?: string
           is_external?: boolean
           phone?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: string
         }
         Relationships: [
           {
@@ -863,6 +908,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_role_fkey"
+            columns: ["role"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["value"]
+          },
         ]
       }
       role_change_requests: {
@@ -870,7 +922,7 @@ export type Database = {
           created_at: string
           id: string
           requested_by: string
-          requested_role: Database["public"]["Enums"]["user_role"]
+          requested_role: string
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
@@ -880,7 +932,7 @@ export type Database = {
           created_at?: string
           id?: string
           requested_by: string
-          requested_role: Database["public"]["Enums"]["user_role"]
+          requested_role: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -890,7 +942,7 @@ export type Database = {
           created_at?: string
           id?: string
           requested_by?: string
-          requested_role?: Database["public"]["Enums"]["user_role"]
+          requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -905,6 +957,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "role_change_requests_requested_role_fkey"
+            columns: ["requested_role"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["value"]
+          },
+          {
             foreignKeyName: "role_change_requests_reviewed_by_fkey"
             columns: ["reviewed_by"]
             isOneToOne: false
@@ -914,6 +973,44 @@ export type Database = {
           {
             foreignKeyName: "role_change_requests_target_user_id_fkey"
             columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          assignable: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          is_system: boolean
+          label: string
+          value: string
+        }
+        Insert: {
+          assignable?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_system?: boolean
+          label: string
+          value: string
+        }
+        Update: {
+          assignable?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_system?: boolean
+          label?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1290,10 +1387,7 @@ export type Database = {
         Returns: undefined
       }
       current_client_id: { Args: never; Returns: string }
-      current_role: {
-        Args: never
-        Returns: Database["public"]["Enums"]["user_role"]
-      }
+      current_role: { Args: never; Returns: string }
     }
     Enums: {
       content_asset_type:
@@ -1318,12 +1412,6 @@ export type Database = {
       task_priority: "low" | "medium" | "high" | "urgent"
       task_source: "manual" | "email" | "client"
       task_status: "not_started" | "in_progress" | "blocked" | "review" | "done"
-      user_role:
-        | "editor_designer"
-        | "videographer_photographer"
-        | "social_media_manager"
-        | "team_leader"
-        | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1475,13 +1563,6 @@ export const Constants = {
       task_priority: ["low", "medium", "high", "urgent"],
       task_source: ["manual", "email", "client"],
       task_status: ["not_started", "in_progress", "blocked", "review", "done"],
-      user_role: [
-        "editor_designer",
-        "videographer_photographer",
-        "social_media_manager",
-        "team_leader",
-        "client",
-      ],
     },
   },
 } as const

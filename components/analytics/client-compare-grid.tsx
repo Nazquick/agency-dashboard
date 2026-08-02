@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { colorForId } from "@/lib/colors";
-import { activityHealth, engagementScore, tasksThisMonth } from "@/lib/analytics/metrics";
+import { activityHealth, engagementScore, creditsUsedInMonth } from "@/lib/analytics/metrics";
 import { salesThisMonth, formatSales } from "@/lib/analytics/sales";
 import { HealthBar } from "@/components/analytics/health-bar";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ export function ClientCompareGrid({
   onSelect,
 }: {
   clients: Tables<"clients">[];
-  tasks: Pick<Tables<"tasks">, "client_id" | "created_at">[];
+  tasks: Pick<Tables<"tasks">, "client_id" | "created_at" | "task_type" | "archived">[];
   events: Pick<Tables<"calendar_events">, "client_id" | "created_at">[];
   assets: Tables<"content_assets">[];
   sales: Pick<Tables<"client_sales">, "client_id" | "amount" | "sale_date">[];
@@ -32,8 +32,8 @@ export function ClientCompareGrid({
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {clients.map((client) => {
         const health = activityHealth({ clientId: client.id, tasks, events, allClientIds });
-        const used = tasksThisMonth(tasks, client.id);
-        const limit = client.monthly_task_limit;
+        const used = creditsUsedInMonth(tasks, client.id);
+        const limit = client.monthly_credit_limit;
         const overLimit = limit != null && used > limit;
         const clientAssets = assets.filter((a) => a.client_id === client.id);
         const totalEngagement = clientAssets.reduce((sum, a) => sum + engagementScore(a), 0);
@@ -64,7 +64,7 @@ export function ClientCompareGrid({
                   <span className="font-medium">{formatSales(salesThisMonth(sales, client.id))}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tasks this month</span>
+                  <span className="text-muted-foreground">Credits this month</span>
                   <Badge variant={overLimit ? "destructive" : "secondary"}>
                     {used}
                     {limit != null ? ` / ${limit}` : ""}

@@ -21,6 +21,7 @@ export default async function AdminPage() {
     { data: clients },
     { data: quotaClients },
     { data: quotaTasks },
+    { data: quotaTopups },
     { data: loginProfiles },
     { data: members },
     { data: salaries },
@@ -32,10 +33,13 @@ export default async function AdminPage() {
     supabase.from("clients").select("id, name").eq("archived", false).order("name"),
     supabase
       .from("clients")
-      .select("id, name, monthly_task_limit, quarterly_task_limit")
+      .select("id, name, monthly_credit_limit")
       .eq("archived", false)
       .order("name"),
-    supabase.from("tasks").select("id, title, client_id, created_at, status, overage_charged"),
+    supabase
+      .from("tasks")
+      .select("id, title, client_id, created_at, status, overage_charged, task_type, archived"),
+    supabase.from("credit_topups").select("client_id, period_start, credits_added"),
     supabase.from("profiles").select("id, full_name, client_id").eq("role", "client"),
     supabase.from("profiles").select("*").neq("role", "client").order("full_name"),
     supabase.from("profile_salaries").select("*"),
@@ -64,6 +68,7 @@ export default async function AdminPage() {
         clients={clients ?? []}
         quotaClients={quotaClients ?? []}
         quotaTasks={quotaTasks ?? []}
+        quotaTopups={quotaTopups ?? []}
         loginProfiles={loginProfiles ?? []}
         members={members ?? []}
         salaries={salaries ?? []}

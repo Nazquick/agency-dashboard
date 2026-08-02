@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { useUser } from "@/components/providers/user-provider";
+import { useUser, useRoles } from "@/components/providers/user-provider";
 import { isMasterKeyUser, roleLabel } from "@/lib/auth/roles";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export function PendingRoleApprovals({
   initialRequests: RoleChangeRequestWithRelations[];
 }) {
   const actor = useUser();
+  const roles = useRoles();
   const [requests, setRequests] = useState(initialRequests);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -79,7 +80,7 @@ export function PendingRoleApprovals({
               <span className="font-medium">{request.requested_by_profile?.full_name ?? "Someone"}</span>{" "}
               wants to promote{" "}
               <span className="font-medium">{request.target?.full_name ?? "a member"}</span> to{" "}
-              {roleLabel(request.requested_role)}
+              {roleLabel(request.requested_role, roles)}
             </span>
             <div className="flex gap-2">
               <Button

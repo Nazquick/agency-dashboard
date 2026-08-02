@@ -17,15 +17,19 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type ClientLoginProfile = Pick<Tables<"profiles">, "id" | "full_name" | "client_id">;
-type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_task_limit" | "quarterly_task_limit">;
-type QuotaTask = Pick<Tables<"tasks">, "id" | "title" | "client_id" | "created_at" | "status" | "overage_charged">;
+type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit">;
+type QuotaTask = Pick<
+  Tables<"tasks">,
+  "id" | "title" | "client_id" | "created_at" | "status" | "overage_charged" | "task_type" | "archived"
+>;
+type QuotaTopup = Pick<Tables<"credit_topups">, "client_id" | "period_start" | "credits_added">;
 
 const SECTIONS = [
   { key: "client-activity", title: "Client activity", description: "Portal logins, time spent, and actions per client." },
   { key: "member-activity", title: "Member activity", description: "Logins, time in the app, and actions per team member." },
   { key: "salary", title: "Salary adjustments", description: "Review workload and adjust monthly salaries." },
   { key: "finances", title: "Company finances", description: "Income, expenses, and net — including team salaries." },
-  { key: "client-quotas", title: "Client quotas", description: "Who's over their monthly/quarterly credit, and billing for overage." },
+  { key: "client-quotas", title: "Client quotas", description: "Who's over their monthly credit, and billing for overage." },
   { key: "email-clients", title: "Email all clients", description: "Send a one-off message to every client's primary contact." },
   { key: "email-members", title: "Email all members", description: "Send a one-off message to the whole team." },
 ] as const;
@@ -36,6 +40,7 @@ export function AdminGrid({
   clients,
   quotaClients,
   quotaTasks,
+  quotaTopups,
   loginProfiles,
   members,
   salaries,
@@ -48,6 +53,7 @@ export function AdminGrid({
   clients: Pick<Tables<"clients">, "id" | "name">[];
   quotaClients: QuotaClient[];
   quotaTasks: QuotaTask[];
+  quotaTopups: QuotaTopup[];
   loginProfiles: ClientLoginProfile[];
   members: Tables<"profiles">[];
   salaries: Tables<"profile_salaries">[];
@@ -90,7 +96,9 @@ export function AdminGrid({
       case "finances":
         return <CompanyFinances initialTransactions={companyTransactions} salaryTotal={salaryTotal} />;
       case "client-quotas":
-        return <ClientQuotaPanel clients={quotaClients} initialTasks={quotaTasks} />;
+        return (
+          <ClientQuotaPanel clients={quotaClients} initialTasks={quotaTasks} initialTopups={quotaTopups} />
+        );
       case "email-clients":
         return <EmailBroadcastDialog audience="clients" />;
       case "email-members":

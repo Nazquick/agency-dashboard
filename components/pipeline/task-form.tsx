@@ -7,10 +7,11 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useUser } from "@/components/providers/user-provider";
+import { useUser, useRoles } from "@/components/providers/user-provider";
 import { isTeamLeader, roleLabel } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
-import { TASK_TYPES, PRIORITIES, STATUSES } from "@/lib/tasks/constants";
+import { CONTENT_TYPES, PRIORITIES, STATUSES } from "@/lib/tasks/constants";
+import { leadTimeViolation } from "@/lib/tasks/lead-time";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,6 +122,7 @@ export function TaskForm({
   onDelete?: (taskId: string) => void;
 }) {
   const profile = useUser();
+  const roles = useRoles();
   const leader = isTeamLeader(profile.role);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -235,7 +237,7 @@ export function TaskForm({
         toast.error(error.message);
         return null;
       }
-      toast.success(`AI assigned this task to ${assignee.full_name} (${roleLabel(role)})`);
+      toast.success(`AI assigned this task to ${assignee.full_name} (${roleLabel(role, roles)})`);
       return assignee;
     } catch {
       toast.error("AI role assessment failed");
@@ -299,6 +301,13 @@ export function TaskForm({
   }
 
   async function onSubmit(values: TaskFormValues) {
+    const deadlineIso = values.deadline ? new Date(values.deadline).toISOString() : null;
+    const violation = leadTimeViolation(values.task_type, deadlineIso, Boolean(values.client_id));
+    if (violation) {
+      toast.error(violation);
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
 
@@ -308,7 +317,7 @@ export function TaskForm({
       task_type: values.task_type || null,
       client_id: values.client_id || null,
       assignee_id: values.assignee_id || null,
-      deadline: values.deadline ? new Date(values.deadline).toISOString() : null,
+      deadline: deadlineIso,
       priority: values.priority,
       status: values.status,
     };
@@ -439,7 +448,7 @@ export function TaskForm({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>None</SelectItem>
-                      {TASK_TYPES.map((t) => (
+                      {CONTENT_TYPES.map((t) => (
                         <SelectItem key={t.value} value={t.value}>
                           {t.label}
                         </SelectItem>
