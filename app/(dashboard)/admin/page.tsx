@@ -30,7 +30,7 @@ export default async function AdminPage() {
     { data: sessions },
     { data: activity },
   ] = await Promise.all([
-    supabase.from("clients").select("id, name").eq("archived", false).order("name"),
+    supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
     supabase
       .from("clients")
       .select("id, name, monthly_credit_limit")

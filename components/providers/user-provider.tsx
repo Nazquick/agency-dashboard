@@ -62,3 +62,42 @@ export function useAddRole() {
   }
   return ctx.addRole;
 }
+
+export type GroupOption = { id: string; name: string };
+
+const GroupsContext = createContext<{
+  groups: GroupOption[];
+  addGroup: (group: GroupOption) => void;
+} | null>(null);
+
+export function GroupsProvider({
+  groups: initialGroups,
+  children,
+}: {
+  groups: GroupOption[];
+  children: React.ReactNode;
+}) {
+  const [groups, setGroups] = useState(initialGroups);
+
+  function addGroup(group: GroupOption) {
+    setGroups((prev) => (prev.some((g) => g.id === group.id) ? prev : [...prev, group]));
+  }
+
+  return <GroupsContext.Provider value={{ groups, addGroup }}>{children}</GroupsContext.Provider>;
+}
+
+export function useGroups() {
+  const ctx = useContext(GroupsContext);
+  if (!ctx) {
+    throw new Error("useGroups must be used within a GroupsProvider");
+  }
+  return ctx.groups;
+}
+
+export function useAddGroup() {
+  const ctx = useContext(GroupsContext);
+  if (!ctx) {
+    throw new Error("useAddGroup must be used within a GroupsProvider");
+  }
+  return ctx.addGroup;
+}

@@ -17,12 +17,14 @@ import {
 
 export function CreditStatusPanel({
   clientId,
+  clientName,
   monthlyCreditLimit,
   monthlyFee,
   tasks,
   initialTopup,
 }: {
   clientId: string;
+  clientName?: string;
   monthlyCreditLimit: number | null;
   monthlyFee: number | null;
   tasks: Pick<Tables<"tasks">, "client_id" | "created_at" | "task_type" | "archived">[];
@@ -40,7 +42,11 @@ export function CreditStatusPanel({
 
   async function handleApprove() {
     setLoading(true);
-    const res = await fetch("/api/portal/credit-topup", { method: "POST" });
+    const res = await fetch("/api/portal/credit-topup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId }),
+    });
     const body = await res.json();
     setLoading(false);
 
@@ -58,7 +64,7 @@ export function CreditStatusPanel({
     <Card>
       <CardContent className="space-y-3 pt-6">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">Credits this month</span>
+          <span className="font-medium">{clientName ? `${clientName} — credits` : "Credits this month"}</span>
           <Badge variant={over ? "destructive" : "secondary"}>
             {used} / {limit}
           </Badge>
@@ -85,7 +91,9 @@ export function CreditStatusPanel({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Top up your credits</DialogTitle>
+                <DialogTitle>
+                  Top up {clientName ? `${clientName}'s` : "your"} credits
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <p className="text-sm">

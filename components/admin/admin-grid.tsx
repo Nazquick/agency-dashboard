@@ -8,6 +8,7 @@ import { CompanyFinances } from "@/components/admin/company-finances";
 import { EmailBroadcastDialog } from "@/components/admin/email-broadcast-dialog";
 import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 import { ClientQuotaPanel } from "@/components/admin/client-quota-panel";
+import { ClientGroupsPanel } from "@/components/admin/client-groups-panel";
 import { AddMemberDialog } from "@/components/team/add-member-dialog";
 import { AdSpendStrategyDownload } from "@/components/admin/ad-spend-strategy-download";
 import type { WorkloadTask } from "@/components/team/workload-kanban";
@@ -30,6 +31,7 @@ const SECTIONS = [
   { key: "salary", title: "Salary adjustments", description: "Review workload and adjust monthly salaries." },
   { key: "finances", title: "Company finances", description: "Income, expenses, and net — including team salaries." },
   { key: "client-quotas", title: "Client quotas", description: "Who's over their monthly credit, and billing for overage." },
+  { key: "client-groups", title: "Client groups", description: "Group multi-location clients and create master account logins." },
   { key: "email-clients", title: "Email all clients", description: "Send a one-off message to every client's primary contact." },
   { key: "email-members", title: "Email all members", description: "Send a one-off message to the whole team." },
 ] as const;
@@ -50,7 +52,7 @@ export function AdminGrid({
   initialSessions,
   initialActivity,
 }: {
-  clients: Pick<Tables<"clients">, "id" | "name">[];
+  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   quotaClients: QuotaClient[];
   quotaTasks: QuotaTask[];
   quotaTopups: QuotaTopup[];
@@ -99,6 +101,8 @@ export function AdminGrid({
         return (
           <ClientQuotaPanel clients={quotaClients} initialTasks={quotaTasks} initialTopups={quotaTopups} />
         );
+      case "client-groups":
+        return <ClientGroupsPanel clients={clients} />;
       case "email-clients":
         return <EmailBroadcastDialog audience="clients" />;
       case "email-members":

@@ -269,6 +269,35 @@ export type Database = {
           },
         ]
       }
+      client_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_reports: {
         Row: {
           ad_spend: number | null
@@ -471,6 +500,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          group_id: string | null
           id: string
           monthly_credit_limit: number | null
           monthly_fee: number | null
@@ -482,6 +512,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          group_id?: string | null
           id?: string
           monthly_credit_limit?: number | null
           monthly_fee?: number | null
@@ -493,6 +524,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          group_id?: string | null
           id?: string
           monthly_credit_limit?: number | null
           monthly_fee?: number | null
@@ -504,6 +536,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "client_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -867,6 +906,7 @@ export type Database = {
         Row: {
           active: boolean
           avatar_url: string | null
+          client_group_id: string | null
           client_id: string | null
           created_at: string
           email: string
@@ -879,6 +919,7 @@ export type Database = {
         Insert: {
           active?: boolean
           avatar_url?: string | null
+          client_group_id?: string | null
           client_id?: string | null
           created_at?: string
           email: string
@@ -891,6 +932,7 @@ export type Database = {
         Update: {
           active?: boolean
           avatar_url?: string | null
+          client_group_id?: string | null
           client_id?: string | null
           created_at?: string
           email?: string
@@ -901,6 +943,13 @@ export type Database = {
           role?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_client_group_id_fkey"
+            columns: ["client_group_id"]
+            isOneToOne: false
+            referencedRelation: "client_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_client_id_fkey"
             columns: ["client_id"]
@@ -1382,10 +1431,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accessible_client_ids: { Args: never; Returns: string[] }
       confirm_meetup_if_all_accepted: {
         Args: { p_proposal_id: string }
         Returns: undefined
       }
+      current_client_group_id: { Args: never; Returns: string }
       current_client_id: { Args: never; Returns: string }
       current_role: { Args: never; Returns: string }
     }

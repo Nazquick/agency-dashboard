@@ -1,5 +1,33 @@
 import type { Tables } from "@/lib/types/database.types";
 
+type Baseline = Tables<"client_baselines">;
+
+// For a master account with several locations' baseline rows, sum every
+// numeric field into one combined "before DYOR" snapshot — same summing
+// convention computeAfterMetrics already uses for shares/sales.
+export function combineBaselines(baselines: Baseline[]): Baseline | null {
+  if (baselines.length === 0) return null;
+  if (baselines.length === 1) return baselines[0];
+
+  const sum = (key: "posts" | "views" | "likes" | "comments" | "shares" | "mentions" | "ad_spend" | "roas" | "sales") =>
+    baselines.reduce((total, b) => total + (Number(b[key]) || 0), 0);
+
+  return {
+    client_id: baselines[0].client_id,
+    posts: sum("posts"),
+    views: sum("views"),
+    likes: sum("likes"),
+    comments: sum("comments"),
+    shares: sum("shares"),
+    mentions: sum("mentions"),
+    ad_spend: sum("ad_spend"),
+    roas: sum("roas"),
+    sales: sum("sales"),
+    updated_at: baselines[0].updated_at,
+    updated_by: baselines[0].updated_by,
+  };
+}
+
 // Pure functions turning the client's raw report/asset/sales rows into the
 // "after DYOR" side of the portal comparison. No fetching here — mirrors
 // the style of lib/analytics/metrics.ts and sales.ts.

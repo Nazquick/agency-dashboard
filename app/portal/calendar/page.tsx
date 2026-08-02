@@ -11,18 +11,20 @@ export default async function PortalCalendarPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("client_id")
+    .select("client_id, client_group_id")
     .eq("id", user.id)
     .single();
-  if (!profile?.client_id) redirect("/");
+  if (!profile?.client_id && !profile?.client_group_id) redirect("/");
 
-  const { data: events } = await supabase
-    .from("calendar_events")
-    .select(
-      "*, client:clients(id, name), assignee:profiles!calendar_events_assignee_id_fkey(id, full_name, role), task:tasks(id, priority)"
-    )
-    .eq("client_id", profile.client_id)
-    .order("starts_at");
+  const [{ data: events }, { data: clients }] = await Promise.all([
+    supabase
+      .from("calendar_events")
+      .select(
+        "*, client:clients(id, name), assignee:profiles!calendar_events_assignee_id_fkey(id, full_name, role), task:tasks(id, priority)"
+      )
+      .order("starts_at"),
+    supabase.from("clients").select("id, name").order("name"),
+  ]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -33,9 +35,9 @@ export default async function PortalCalendarPage() {
 
       <CalendarView
         initialEvents={(events ?? []) as unknown as CalendarEventWithRelations[]}
-        clients={[]}
+        clients={clients ?? []}
         profiles={[]}
-        defaultClientId={profile.client_id}
+        defaultClientId={profile.client_id ?? undefined}
         readOnly
       />
     </div>

@@ -11,10 +11,12 @@ export default async function PortalRequestPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("client_id")
+    .select("client_id, client_group_id")
     .eq("id", user.id)
     .single();
-  if (!profile?.client_id) redirect("/");
+  if (!profile?.client_id && !profile?.client_group_id) redirect("/");
 
-  return <RequestTaskForm clientId={profile.client_id} />;
+  const { data: clients } = await supabase.from("clients").select("id, name").order("name");
+
+  return <RequestTaskForm clients={clients ?? []} />;
 }

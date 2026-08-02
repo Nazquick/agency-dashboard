@@ -29,15 +29,17 @@ const requestSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   task_type: z.string().optional(),
+  client_id: z.string().optional(),
   deadline: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
 });
 
 type RequestFormValues = z.infer<typeof requestSchema>;
 
-export function RequestTaskForm({ clientId }: { clientId: string }) {
+export function RequestTaskForm({ clients }: { clients: { id: string; name: string }[] }) {
   const profile = useUser();
   const [loading, setLoading] = useState(false);
+  const showLocation = clients.length > 1;
   const {
     register,
     handleSubmit,
@@ -50,12 +52,19 @@ export function RequestTaskForm({ clientId }: { clientId: string }) {
       title: "",
       description: "",
       task_type: undefined,
+      client_id: clients.length === 1 ? clients[0].id : undefined,
       deadline: "",
       priority: "medium",
     },
   });
 
   async function onSubmit(values: RequestFormValues) {
+    const clientId = values.client_id ?? clients[0]?.id;
+    if (!clientId) {
+      toast.error("Choose a location");
+      return;
+    }
+
     const deadlineIso = values.deadline ? new Date(values.deadline).toISOString() : null;
     const violation = leadTimeViolation(values.task_type, deadlineIso, true);
     if (violation) {
@@ -98,7 +107,14 @@ export function RequestTaskForm({ clientId }: { clientId: string }) {
     });
 
     toast.success("Sent to the team");
-    reset({ title: "", description: "", task_type: undefined, deadline: "", priority: "medium" });
+    reset({
+      title: "",
+      description: "",
+      task_type: undefined,
+      client_id: clients.length === 1 ? clients[0].id : undefined,
+      deadline: "",
+      priority: "medium",
+    });
   }
 
   return (
@@ -123,6 +139,30 @@ export function RequestTaskForm({ clientId }: { clientId: string }) {
               <Label htmlFor="request-description">Description</Label>
               <Textarea id="request-description" rows={4} {...register("description")} />
             </div>
+
+            {showLocation && (
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Controller
+                  name="client_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
