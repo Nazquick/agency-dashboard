@@ -39,6 +39,25 @@ export const PRIORITIES: { value: TaskPriority; label: string }[] = [
   { value: "urgent", label: "Urgent" },
 ];
 
+// Higher = more urgent — used to sort the active pipeline so the most
+// urgent tasks surface first, nearest deadline breaking ties.
+export const PRIORITY_RANK: Record<TaskPriority, number> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+  urgent: 4,
+};
+
+const URGENT_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
+// A task counts as "long urgent" once it's been sitting at urgent priority
+// for more than 24h (tracked by the tasks_track_urgent_since DB trigger) —
+// drives the animated red border that flags it in the pipeline.
+export function isLongUrgent(task: { priority: string; urgent_since: string | null }): boolean {
+  if (task.priority !== "urgent" || !task.urgent_since) return false;
+  return Date.now() - new Date(task.urgent_since).getTime() > URGENT_THRESHOLD_MS;
+}
+
 export const STATUSES: { value: TaskStatus; label: string }[] = [
   { value: "not_started", label: "Not started" },
   { value: "in_progress", label: "In progress" },

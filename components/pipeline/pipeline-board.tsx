@@ -13,14 +13,17 @@ import {
   STATUSES,
   PRIORITY_BADGE_CLASS,
   STATUS_BADGE_CLASS,
+  PRIORITY_RANK,
   priorityLabel,
   statusLabel,
+  isLongUrgent,
   type TaskPriority,
   type TaskStatus,
 } from "@/lib/tasks/constants";
 import { TaskForm } from "@/components/pipeline/task-form";
 import { TaskColorDot } from "@/components/tasks/task-color-dot";
 import { taskColor, TASK_COLOR_LABEL } from "@/lib/tasks/color-code";
+import { cn } from "@/lib/utils";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -127,6 +130,28 @@ export function PipelineBoard({
       return true;
     });
   }, [tasks, statusFilter, assigneeFilter, priorityFilter, showArchived, profile.id]);
+
+  // Done tasks move out of the active flow into a bulk area at the bottom
+  // (still visible, not hidden) — the active list is then sorted so the
+  // most urgent tasks lead, nearest deadline breaking ties within a tier.
+  const { activeTasks, doneTasks } = useMemo(() => {
+    const active: TaskWithRelations[] = [];
+    const done: TaskWithRelations[] = [];
+    for (const t of filtered) {
+      (t.status === "done" ? done : active).push(t);
+    }
+    active.sort((a, b) => {
+      const rankDiff =
+        PRIORITY_RANK[b.priority as TaskPriority] - PRIORITY_RANK[a.priority as TaskPriority];
+      if (rankDiff !== 0) return rankDiff;
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    });
+    done.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    return { activeTasks: active, doneTasks: done };
+  }, [filtered]);
 
   function canEdit(task: TaskWithRelations) {
     return leader || task.assignee_id === profile.id;
@@ -301,150 +326,190 @@ export function PipelineBoard({
           <p className="text-sm text-muted-foreground">No tasks match these filters.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Color</TableHead>
-                <TableHead>Title</TableHead>
-                {showClientColumn && <TableHead>Client</TableHead>}
-                <TableHead>Assignee</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Deadline</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((task) => {
-                const color = taskColor(task.priority as TaskPriority, task.assignee?.role);
-                return (
-                <TableRow key={task.id}>
-                  <TableCell>
-                    {color ? (
-                      <TaskColorDot color={color} title={TASK_COLOR_LABEL[color]} />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleAssess(task)}
-                        disabled={assessingId === task.id}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                        title="Needs AI assessment — click to assign a role"
-                      >
-                        <span
-                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted-foreground"
-                          aria-hidden
-                        />
-                        {assessingId === task.id ? "Assessing…" : "Assess"}
-                      </button>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {task.title}
-                      {task.source === "client" && (
-                        <Badge variant="secondary" className="shrink-0">
-                          Client request
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  {showClientColumn && (
-                    <TableCell className="text-muted-foreground">
-                      {task.client?.name ?? "—"}
-                    </TableCell>
-                  )}
-                  <TableCell className="text-muted-foreground">
-                    {task.assignee?.full_name ?? "Unassigned"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={PRIORITY_BADGE_CLASS[task.priority as TaskPriority]}>
-                      {priorityLabel(task.priority as TaskPriority)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {canEdit(task) ? (
-                      <Select
-                        value={task.status}
-                        onValueChange={(v) => handleStatusChange(task, v as TaskStatus)}
-                      >
-                        <SelectTrigger className="h-8 w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUSES.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge className={STATUS_BADGE_CLASS[task.status as TaskStatus]}>
-                        {statusLabel(task.status as TaskStatus)}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDeadline(task.deadline)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {canEdit(task) && (
-                      <div className="flex justify-end gap-2">
-                        <TaskForm
-                          task={task}
-                          clients={clients}
-                          profiles={profiles}
-                          defaultClientId={defaultClientId}
-                          trigger={
-                            <Button variant="outline" size="sm">
-                              Edit
-                            </Button>
-                          }
-                          onSuccess={(updated) =>
-                            setTasks((prev) =>
-                              prev.map((t) =>
-                                t.id === updated.id
-                                  ? {
-                                      ...updated,
-                                      client:
-                                        clients.find((c) => c.id === updated.client_id) ?? null,
-                                      assignee:
-                                        profiles.find((p) => p.id === updated.assignee_id)
-                                          ? {
-                                              id: updated.assignee_id!,
-                                              full_name: profiles.find(
-                                                (p) => p.id === updated.assignee_id
-                                              )!.full_name,
-                                              role: profiles.find(
-                                                (p) => p.id === updated.assignee_id
-                                              )!.role,
-                                            }
-                                          : null,
-                                    }
-                                  : t
-                              )
-                            )
-                          }
-                          onDelete={(deletedId) =>
-                            setTasks((prev) => prev.filter((t) => t.id !== deletedId))
-                          }
-                        />
-                        {leader && (
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(task)}>
-                            Delete
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </TableCell>
+        <>
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Color</TableHead>
+                  <TableHead>Title</TableHead>
+                  {showClientColumn && <TableHead>Client</TableHead>}
+                  <TableHead>Assignee</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Deadline</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {activeTasks.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={showClientColumn ? 8 : 7}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      Nothing active — everything left matches the filters is done.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  activeTasks.map((task) => renderRow(task))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {doneTasks.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-muted-foreground">
+                Done ({doneTasks.length})
+              </h2>
+              <div className="overflow-x-auto rounded-lg border bg-muted/30">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Color</TableHead>
+                      <TableHead>Title</TableHead>
+                      {showClientColumn && <TableHead>Client</TableHead>}
+                      <TableHead>Assignee</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Deadline</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>{doneTasks.map((task) => renderRow(task, { muted: true }))}</TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
+
+  function renderRow(task: TaskWithRelations, options?: { muted?: boolean }) {
+    const muted = options?.muted ?? false;
+    const color = taskColor(task.priority as TaskPriority, task.assignee?.role);
+    const flagUrgent = !muted && isLongUrgent(task);
+
+    return (
+      <TableRow key={task.id} className={muted ? "opacity-70" : undefined}>
+        <TableCell>
+          {color ? (
+            <TaskColorDot color={color} title={TASK_COLOR_LABEL[color]} />
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleAssess(task)}
+              disabled={assessingId === task.id}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+              title="Needs AI assessment — click to assign a role"
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted-foreground"
+                aria-hidden
+              />
+              {assessingId === task.id ? "Assessing…" : "Assess"}
+            </button>
+          )}
+        </TableCell>
+        <TableCell className="font-medium">
+          <div
+            className={cn(
+              "inline-flex items-center gap-2 rounded-md px-2 py-1",
+              flagUrgent && "urgent-stroke"
+            )}
+            title={flagUrgent ? "Urgent for more than 24 hours" : undefined}
+          >
+            {task.title}
+            {task.source === "client" && (
+              <Badge variant="secondary" className="shrink-0">
+                Client request
+              </Badge>
+            )}
+          </div>
+        </TableCell>
+        {showClientColumn && (
+          <TableCell className="text-muted-foreground">{task.client?.name ?? "—"}</TableCell>
+        )}
+        <TableCell className="text-muted-foreground">
+          {task.assignee?.full_name ?? "Unassigned"}
+        </TableCell>
+        <TableCell>
+          <Badge className={PRIORITY_BADGE_CLASS[task.priority as TaskPriority]}>
+            {priorityLabel(task.priority as TaskPriority)}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          {canEdit(task) ? (
+            <Select
+              value={task.status}
+              onValueChange={(v) => handleStatusChange(task, v as TaskStatus)}
+            >
+              <SelectTrigger className="h-8 w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Badge className={STATUS_BADGE_CLASS[task.status as TaskStatus]}>
+              {statusLabel(task.status as TaskStatus)}
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell className="text-muted-foreground">{formatDeadline(task.deadline)}</TableCell>
+        <TableCell className="text-right">
+          {canEdit(task) && (
+            <div className="flex justify-end gap-2">
+              <TaskForm
+                task={task}
+                clients={clients}
+                profiles={profiles}
+                defaultClientId={defaultClientId}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    Edit
+                  </Button>
+                }
+                onSuccess={(updated) =>
+                  setTasks((prev) =>
+                    prev.map((t) =>
+                      t.id === updated.id
+                        ? {
+                            ...updated,
+                            client: clients.find((c) => c.id === updated.client_id) ?? null,
+                            assignee: profiles.find((p) => p.id === updated.assignee_id)
+                              ? {
+                                  id: updated.assignee_id!,
+                                  full_name: profiles.find((p) => p.id === updated.assignee_id)!
+                                    .full_name,
+                                  role: profiles.find((p) => p.id === updated.assignee_id)!.role,
+                                }
+                              : null,
+                          }
+                        : t
+                    )
+                  )
+                }
+                onDelete={(deletedId) =>
+                  setTasks((prev) => prev.filter((t) => t.id !== deletedId))
+                }
+              />
+              {leader && (
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(task)}>
+                  Delete
+                </Button>
+              )}
+            </div>
+          )}
+        </TableCell>
+      </TableRow>
+    );
+  }
 }

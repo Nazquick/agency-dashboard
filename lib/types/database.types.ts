@@ -1201,6 +1201,7 @@ export type Database = {
           task_type: string | null
           title: string
           updated_at: string
+          urgent_since: string | null
         }
         Insert: {
           ai_estimate_status?: string | null
@@ -1221,6 +1222,7 @@ export type Database = {
           task_type?: string | null
           title: string
           updated_at?: string
+          urgent_since?: string | null
         }
         Update: {
           ai_estimate_status?: string | null
@@ -1241,6 +1243,7 @@ export type Database = {
           task_type?: string | null
           title?: string
           updated_at?: string
+          urgent_since?: string | null
         }
         Relationships: [
           {

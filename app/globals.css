@@ -161,6 +161,52 @@
   }
 }
 
+/* Pipeline — long-urgent tasks (urgent for 24h+) get a red stroke that
+   travels around the row's perimeter, built from a rotating conic
+   gradient masked down to just its border. */
+
+@property --urgent-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes urgent-stroke-spin {
+  to {
+    --urgent-angle: 360deg;
+  }
+}
+
+.urgent-stroke {
+  position: relative;
+}
+
+.urgent-stroke::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--urgent-angle),
+    transparent 0deg,
+    transparent 280deg,
+    oklch(0.63 0.24 27) 320deg,
+    oklch(0.63 0.24 27) 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: urgent-stroke-spin 2.5s linear infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urgent-stroke::after {
+    animation: none;
+  }
+}
+
 .dark .rbc-toolbar button {
   color: var(--foreground);
 }
