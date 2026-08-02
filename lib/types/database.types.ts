@@ -224,6 +224,57 @@ export type Database = {
           },
         ]
       }
+      client_credentials: {
+        Row: {
+          auth_code: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          login: string
+          password: string
+          platform: string
+          updated_at: string
+        }
+        Insert: {
+          auth_code?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          login: string
+          password: string
+          platform: string
+          updated_at?: string
+        }
+        Update: {
+          auth_code?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          login?: string
+          password?: string
+          platform?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_credentials_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_credentials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_files: {
         Row: {
           client_id: string

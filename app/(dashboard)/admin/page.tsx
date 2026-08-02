@@ -29,6 +29,7 @@ export default async function AdminPage() {
     { data: companyTransactions },
     { data: sessions },
     { data: activity },
+    { data: credentials },
   ] = await Promise.all([
     supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
     supabase
@@ -53,6 +54,7 @@ export default async function AdminPage() {
     supabase.from("company_transactions").select("*").order("transaction_date", { ascending: false }),
     supabase.from("user_sessions").select("*"),
     supabase.from("activity_log").select("*").order("created_at", { ascending: false }).limit(500),
+    supabase.from("client_credentials").select("*").order("platform"),
   ]);
 
   const salaryTotal = (salaries ?? []).reduce((sum, s) => sum + Number(s.monthly_salary), 0);
@@ -77,6 +79,7 @@ export default async function AdminPage() {
         salaryTotal={salaryTotal}
         initialSessions={sessions ?? []}
         initialActivity={activity ?? []}
+        initialCredentials={credentials ?? []}
       />
     </div>
   );
