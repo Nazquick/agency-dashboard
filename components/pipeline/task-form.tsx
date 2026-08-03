@@ -109,6 +109,8 @@ export function TaskForm({
   defaultClientId,
   defaultAssigneeId,
   trigger,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
   onSuccess,
   onDelete,
 }: {
@@ -117,14 +119,18 @@ export function TaskForm({
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   defaultClientId?: string;
   defaultAssigneeId?: string;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onSuccess?: (task: Tables<"tasks">) => void;
   onDelete?: (taskId: string) => void;
 }) {
   const profile = useUser();
   const roles = useRoles();
   const leader = isTeamLeader(profile.role);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = setControlledOpen ?? setInternalOpen;
   const [loading, setLoading] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -399,7 +405,7 @@ export function TaskForm({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{task ? "Edit task" : "New task"}</DialogTitle>

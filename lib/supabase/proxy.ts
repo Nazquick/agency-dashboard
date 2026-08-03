@@ -20,6 +20,9 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
+      // Keep the session cookie alive across browser/app restarts (400 days
+      // — the max any browser will honor) instead of a session-only cookie.
+      cookieOptions: { maxAge: 60 * 60 * 24 * 400 },
     }
   );
 

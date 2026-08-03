@@ -83,6 +83,7 @@ export function PipelineBoard({
   const [priorityFilter, setPriorityFilter] = useState<string>(ALL);
   const [showArchived, setShowArchived] = useState(false);
   const [assessingId, setAssessingId] = useState<string | null>(null);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     let supabase: SupabaseClient;
@@ -415,9 +416,23 @@ export function PipelineBoard({
         </TableCell>
         <TableCell className="font-medium">
           <div
+            role={canEdit(task) ? "button" : undefined}
+            tabIndex={canEdit(task) ? 0 : undefined}
+            onClick={canEdit(task) ? () => setOpenTaskId(task.id) : undefined}
+            onKeyDown={
+              canEdit(task)
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setOpenTaskId(task.id);
+                    }
+                  }
+                : undefined
+            }
             className={cn(
               "inline-flex items-center gap-2 rounded-md px-2 py-1",
-              flagUrgent && "urgent-stroke"
+              flagUrgent && "urgent-stroke",
+              canEdit(task) && "cursor-pointer hover:bg-muted/60"
             )}
             title={flagUrgent ? "Urgent for more than 24 hours" : undefined}
           >
@@ -467,16 +482,16 @@ export function PipelineBoard({
         <TableCell className="text-right">
           {canEdit(task) && (
             <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setOpenTaskId(task.id)}>
+                Edit
+              </Button>
               <TaskForm
                 task={task}
                 clients={clients}
                 profiles={profiles}
                 defaultClientId={defaultClientId}
-                trigger={
-                  <Button variant="outline" size="sm">
-                    Edit
-                  </Button>
-                }
+                open={openTaskId === task.id}
+                onOpenChange={(v) => setOpenTaskId(v ? task.id : null)}
                 onSuccess={(updated) =>
                   setTasks((prev) =>
                     prev.map((t) =>
