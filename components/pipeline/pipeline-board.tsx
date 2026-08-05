@@ -47,10 +47,35 @@ import {
 const ALL = "__all__";
 const ME = "__me__";
 
+type AssigneeSummary = { id: string; full_name: string; role: Tables<"profiles">["role"] };
+
 export type TaskWithRelations = Tables<"tasks"> & {
   client: { id: string; name: string } | null;
-  assignee: { id: string; full_name: string; role: Tables<"profiles">["role"] } | null;
+  assignee: AssigneeSummary | null;
+  assignees: AssigneeSummary[];
 };
+
+export function flattenAssignees(
+  rows: (Tables<"tasks"> & {
+    client: { id: string; name: string } | null;
+    assignee: AssigneeSummary | null;
+    task_assignees: { profile: AssigneeSummary | null }[];
+  })[]
+): TaskWithRelations[] {
+  return rows.map(({ task_assignees, ...row }) => ({
+    ...row,
+    assignees: task_assignees.map((ta) => ta.profile).filter((p): p is AssigneeSummary => p !== null),
+  }));
+}
+
+function resolveAssignees(
+  ids: string[],
+  profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role">[]
+): AssigneeSummary[] {
+  return ids
+    .map((id) => profiles.find((p) => p.id === id))
+    .filter((p): p is AssigneeSummary => p !== undefined);
+}
 
 function formatDeadline(value: string | null) {
   if (!value) return "—";
@@ -93,13 +118,15 @@ export function PipelineBoard({
     async function refetch() {
       let query = supabase
         .from("tasks")
-        .select("*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role)")
+        .select(
+          "*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
+        )
         .order("created_at", { ascending: false });
       if (defaultClientId) {
         query = query.eq("client_id", defaultClientId);
       }
       const { data } = await query;
-      if (data) setTasks(data as unknown as TaskWithRelations[]);
+      if (data) setTasks(flattenAssignees(data));
     }
 
     async function setup() {
@@ -109,6 +136,7 @@ export function PipelineBoard({
       channel = supabase
         .channel(`tasks-board-${defaultClientId ?? "all"}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refetch)
+        .on("postgres_changes", { event: "*", schema: "public", table: "task_assignees" }, refetch)
         .subscribe();
     }
 
@@ -125,8 +153,12 @@ export function PipelineBoard({
       if (!showArchived && t.archived) return false;
       if (statusFilter !== ALL && t.status !== statusFilter) return false;
       if (priorityFilter !== ALL && t.priority !== priorityFilter) return false;
-      if (assigneeFilter === ME && t.assignee_id !== profile.id) return false;
-      if (assigneeFilter !== ALL && assigneeFilter !== ME && t.assignee_id !== assigneeFilter)
+      if (assigneeFilter === ME && !t.assignees.some((a) => a.id === profile.id)) return false;
+      if (
+        assigneeFilter !== ALL &&
+        assigneeFilter !== ME &&
+        !t.assignees.some((a) => a.id === assigneeFilter)
+      )
         return false;
       return true;
     });
@@ -155,7 +187,7 @@ export function PipelineBoard({
   }, [filtered]);
 
   function canEdit(task: TaskWithRelations) {
-    return leader || task.assignee_id === profile.id;
+    return leader || task.assignees.some((a) => a.id === profile.id);
   }
 
   async function handleStatusChange(task: TaskWithRelations, status: TaskStatus) {
@@ -210,10 +242,20 @@ export function PipelineBoard({
         toast.error(error.message);
         return;
       }
+      await supabase
+        .from("task_assignees")
+        .upsert({ task_id: task.id, profile_id: assignee.id }, { onConflict: "task_id,profile_id" });
       setTasks((prev) =>
         prev.map((t) =>
           t.id === task.id
-            ? { ...t, assignee_id: assignee.id, assignee: { id: assignee.id, full_name: assignee.full_name, role: assignee.role } }
+            ? {
+                ...t,
+                assignee_id: assignee.id,
+                assignee: { id: assignee.id, full_name: assignee.full_name, role: assignee.role },
+                assignees: t.assignees.some((a) => a.id === assignee.id)
+                  ? t.assignees
+                  : [...t.assignees, { id: assignee.id, full_name: assignee.full_name, role: assignee.role }],
+              }
             : t
         )
       );
@@ -303,7 +345,7 @@ export function PipelineBoard({
           profiles={profiles}
           defaultClientId={defaultClientId}
           trigger={<Button>New Task</Button>}
-          onSuccess={(task) =>
+          onSuccess={(task, assigneeIds) =>
             setTasks((prev) => [
               {
                 ...task,
@@ -315,6 +357,7 @@ export function PipelineBoard({
                       role: profiles.find((p) => p.id === task.assignee_id)!.role,
                     }
                   : null,
+                assignees: resolveAssignees(assigneeIds, profiles),
               },
               ...prev.filter((t) => t.id !== task.id),
             ])
@@ -448,7 +491,9 @@ export function PipelineBoard({
           <TableCell className="text-muted-foreground">{task.client?.name ?? "—"}</TableCell>
         )}
         <TableCell className="text-muted-foreground">
-          {task.assignee?.full_name ?? "Unassigned"}
+          {task.assignees.length > 0
+            ? task.assignees.map((a) => a.full_name).join(", ")
+            : "Unassigned"}
         </TableCell>
         <TableCell>
           <Badge className={PRIORITY_BADGE_CLASS[task.priority as TaskPriority]}>
@@ -492,7 +537,7 @@ export function PipelineBoard({
                 defaultClientId={defaultClientId}
                 open={openTaskId === task.id}
                 onOpenChange={(v) => setOpenTaskId(v ? task.id : null)}
-                onSuccess={(updated) =>
+                onSuccess={(updated, assigneeIds) =>
                   setTasks((prev) =>
                     prev.map((t) =>
                       t.id === updated.id
@@ -507,6 +552,7 @@ export function PipelineBoard({
                                   role: profiles.find((p) => p.id === updated.assignee_id)!.role,
                                 }
                               : null,
+                            assignees: resolveAssignees(assigneeIds, profiles),
                           }
                         : t
                     )

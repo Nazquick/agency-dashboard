@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { PipelineBoard, type TaskWithRelations } from "@/components/pipeline/pipeline-board";
+import { PipelineBoard, flattenAssignees } from "@/components/pipeline/pipeline-board";
 
 export default async function ClientPipelinePage({
   params,
@@ -12,7 +12,9 @@ export default async function ClientPipelinePage({
   const [{ data: tasks }, { data: clients }, { data: profiles }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role)")
+      .select(
+        "*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
+      )
       .eq("client_id", clientId)
       .order("created_at", { ascending: false }),
     supabase.from("clients").select("id, name").eq("archived", false).order("name"),
@@ -26,7 +28,7 @@ export default async function ClientPipelinePage({
 
   return (
     <PipelineBoard
-      initialTasks={(tasks ?? []) as unknown as TaskWithRelations[]}
+      initialTasks={flattenAssignees((tasks ?? []) as unknown as Parameters<typeof flattenAssignees>[0])}
       clients={clients ?? []}
       profiles={profiles ?? []}
       defaultClientId={clientId}

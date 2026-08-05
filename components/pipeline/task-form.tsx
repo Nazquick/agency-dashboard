@@ -14,15 +14,14 @@ import { CONTENT_TYPES, PRIORITIES, STATUSES } from "@/lib/tasks/constants";
 import { leadTimeViolation } from "@/lib/tasks/lead-time";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -87,7 +86,6 @@ const taskSchema = z.object({
   description: z.string().optional(),
   task_type: z.string().optional(),
   client_id: z.string().optional(),
-  assignee_id: z.string().optional(),
   deadline: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
   status: z.enum(["not_started", "in_progress", "blocked", "review", "done"]),
@@ -122,7 +120,7 @@ export function TaskForm({
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onSuccess?: (task: Tables<"tasks">) => void;
+  onSuccess?: (task: Tables<"tasks">, assigneeIds: string[]) => void;
   onDelete?: (taskId: string) => void;
 }) {
   const profile = useUser();
@@ -137,6 +135,9 @@ export function TaskForm({
   const [steps, setSteps] = useState<StepDraft[]>([]);
   const [templates, setTemplates] = useState<TemplateWithSteps[]>([]);
   const [templateId, setTemplateId] = useState(NO_TEMPLATE);
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(
+    task?.assignee_id ? [task.assignee_id] : defaultAssigneeId ? [defaultAssigneeId] : []
+  );
   const {
     register,
     handleSubmit,
@@ -150,7 +151,6 @@ export function TaskForm({
       description: task?.description ?? "",
       task_type: task?.task_type ?? undefined,
       client_id: task?.client_id ?? defaultClientId ?? undefined,
-      assignee_id: task?.assignee_id ?? defaultAssigneeId ?? undefined,
       deadline: toDatetimeLocal(task?.deadline ?? null),
       priority: task?.priority ?? "medium",
       status: task?.status ?? "not_started",
@@ -185,6 +185,14 @@ export function TaskForm({
         .then(({ data }) => {
           if (data) setSteps(data.map(stepDraftFromRow));
         });
+
+      supabase
+        .from("task_assignees")
+        .select("profile_id")
+        .eq("task_id", task.id)
+        .then(({ data }) => {
+          if (data) setAssigneeIds(data.map((row) => row.profile_id));
+        });
     }
   }, [open, task]);
 
@@ -193,6 +201,7 @@ export function TaskForm({
     if (next && !task) {
       setSteps([]);
       setTemplateId(NO_TEMPLATE);
+      setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
     }
   }
 
@@ -278,7 +287,7 @@ export function TaskForm({
       entityId: task.id,
     });
     setOpen(false);
-    onSuccess?.(data);
+    onSuccess?.(data, assigneeIds);
   }
 
   async function handleDelete() {
@@ -322,7 +331,7 @@ export function TaskForm({
       description: values.description || null,
       task_type: values.task_type || null,
       client_id: values.client_id || null,
-      assignee_id: values.assignee_id || null,
+      assignee_id: assigneeIds[0] ?? null,
       deadline: deadlineIso,
       priority: values.priority,
       status: values.status,
@@ -360,9 +369,23 @@ export function TaskForm({
       if (stepsError) toast.error(`Steps not saved: ${stepsError.message}`);
     }
 
-    if (!task && !payload.assignee_id && payload.priority !== "urgent") {
+    let finalAssigneeIds = assigneeIds;
+    if (!task && finalAssigneeIds.length === 0 && payload.priority !== "urgent") {
       const assignee = await assessAndAssignRole(taskId, payload.title, payload.description, payload.task_type);
-      if (assignee) result.data.assignee_id = assignee.id;
+      if (assignee) {
+        result.data.assignee_id = assignee.id;
+        finalAssigneeIds = [assignee.id];
+      }
+    }
+
+    if (task) {
+      await supabase.from("task_assignees").delete().eq("task_id", taskId);
+    }
+    if (finalAssigneeIds.length > 0) {
+      const { error: assigneesError } = await supabase
+        .from("task_assignees")
+        .insert(finalAssigneeIds.map((profileId) => ({ task_id: taskId, profile_id: profileId })));
+      if (assigneesError) toast.error(`Assignees not saved: ${assigneesError.message}`);
     }
 
     setLoading(false);
@@ -399,8 +422,9 @@ export function TaskForm({
       reset();
       setSteps([]);
       setTemplateId(NO_TEMPLATE);
+      setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
     }
-    onSuccess?.(result.data);
+    onSuccess?.(result.data, finalAssigneeIds);
   }
 
   return (
@@ -493,50 +517,53 @@ export function TaskForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Assignee</Label>
-              <Controller
-                name="assignee_id"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value ?? NONE} onValueChange={(v) => field.onChange(v === NONE ? undefined : v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Unassigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>Unassigned</SelectItem>
-                      <SelectGroup>
-                        {profiles
-                          .filter((p) => !p.is_external)
-                          .map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.full_name}
-                            </SelectItem>
-                          ))}
-                      </SelectGroup>
-                      {profiles.some((p) => p.is_external) && (
-                        <SelectGroup>
-                          <SelectLabel>External team</SelectLabel>
-                          {profiles
-                            .filter((p) => p.is_external)
-                            .map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.full_name}
-                              </SelectItem>
-                            ))}
-                        </SelectGroup>
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+          <div className="space-y-2">
+            <Label>Assignees</Label>
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
+              {profiles
+                .filter((p) => !p.is_external)
+                .map((p) => (
+                  <label key={p.id} className="flex items-center gap-2 py-0.5 text-sm">
+                    <Checkbox
+                      checked={assigneeIds.includes(p.id)}
+                      onCheckedChange={(checked) =>
+                        setAssigneeIds((prev) =>
+                          checked ? [...prev, p.id] : prev.filter((id) => id !== p.id)
+                        )
+                      }
+                    />
+                    {p.full_name}
+                  </label>
+                ))}
+              {profiles.some((p) => p.is_external) && (
+                <>
+                  <p className="pt-1.5 text-xs font-medium text-muted-foreground">External team</p>
+                  {profiles
+                    .filter((p) => p.is_external)
+                    .map((p) => (
+                      <label key={p.id} className="flex items-center gap-2 py-0.5 text-sm">
+                        <Checkbox
+                          checked={assigneeIds.includes(p.id)}
+                          onCheckedChange={(checked) =>
+                            setAssigneeIds((prev) =>
+                              checked ? [...prev, p.id] : prev.filter((id) => id !== p.id)
+                            )
+                          }
+                        />
+                        {p.full_name}
+                      </label>
+                    ))}
+                </>
+              )}
             </div>
+            {assigneeIds.length === 0 && (
+              <p className="text-xs text-muted-foreground">Unassigned</p>
+            )}
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="deadline">Deadline</Label>
-              <Input id="deadline" type="datetime-local" {...register("deadline")} />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="deadline">Deadline</Label>
+            <Input id="deadline" type="datetime-local" {...register("deadline")} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

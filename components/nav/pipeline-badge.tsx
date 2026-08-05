@@ -17,15 +17,21 @@ export function PipelineBadge() {
     let cancelled = false;
 
     async function refreshCount() {
-      let query = supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .neq("status", "done")
-        .eq("archived", false);
-      if (!leader) {
-        query = query.eq("assignee_id", profile.id);
+      if (leader) {
+        const { count } = await supabase
+          .from("tasks")
+          .select("id", { count: "exact", head: true })
+          .neq("status", "done")
+          .eq("archived", false);
+        setCount(count ?? 0);
+        return;
       }
-      const { count } = await query;
+      const { count } = await supabase
+        .from("task_assignees")
+        .select("task_id, tasks!inner(status, archived)", { count: "exact", head: true })
+        .eq("profile_id", profile.id)
+        .eq("tasks.archived", false)
+        .neq("tasks.status", "done");
       setCount(count ?? 0);
     }
 
@@ -38,6 +44,7 @@ export function PipelineBadge() {
       channel = supabase
         .channel("tasks-badge")
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refreshCount)
+        .on("postgres_changes", { event: "*", schema: "public", table: "task_assignees" }, refreshCount)
         .subscribe();
     }
 
