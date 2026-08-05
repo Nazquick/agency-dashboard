@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { PipelineBoard, flattenAssignees } from "@/components/pipeline/pipeline-board";
+import { PipelineBoard } from "@/components/pipeline/pipeline-board";
+import { flattenAssignees } from "@/lib/tasks/assignees";
 
 export default async function PipelinePage() {
   const supabase = await createClient();

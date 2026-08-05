@@ -23,6 +23,7 @@ import {
 import { TaskForm } from "@/components/pipeline/task-form";
 import { TaskColorDot } from "@/components/tasks/task-color-dot";
 import { taskColor, TASK_COLOR_LABEL } from "@/lib/tasks/color-code";
+import { flattenAssignees } from "@/lib/tasks/assignees";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -54,19 +55,6 @@ export type TaskWithRelations = Tables<"tasks"> & {
   assignee: AssigneeSummary | null;
   assignees: AssigneeSummary[];
 };
-
-export function flattenAssignees(
-  rows: (Tables<"tasks"> & {
-    client: { id: string; name: string } | null;
-    assignee: AssigneeSummary | null;
-    task_assignees: { profile: AssigneeSummary | null }[];
-  })[]
-): TaskWithRelations[] {
-  return rows.map(({ task_assignees, ...row }) => ({
-    ...row,
-    assignees: task_assignees.map((ta) => ta.profile).filter((p): p is AssigneeSummary => p !== null),
-  }));
-}
 
 function resolveAssignees(
   ids: string[],
