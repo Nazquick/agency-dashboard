@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useUser, useRoles } from "@/components/providers/user-provider";
 import { PipelineBadge } from "@/components/nav/pipeline-badge";
 import { AdminQuotaBadge } from "@/components/nav/admin-quota-badge";
+import { QuestionsBadge } from "@/components/nav/questions-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DyorWordmark } from "@/components/branding/dyor-wordmark";
 import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
@@ -29,6 +30,7 @@ const BASE_TABS = [
   { href: "/clients", label: "Clients" },
   { href: "/pipeline", label: "Action Pipeline" },
   { href: "/calendar", label: "Calendar" },
+  { href: "/questions", label: "Questions" },
   { href: "/team", label: "Team" },
   { href: "/analytics", label: "Analytics" },
 ];
@@ -104,6 +106,7 @@ export function TopTabs() {
                 >
                   {tab.label}
                   {tab.href === "/pipeline" && <PipelineBadge />}
+                  {tab.href === "/questions" && <QuestionsBadge />}
                   {tab.href === "/admin" && <AdminQuotaBadge />}
                 </Link>
               );
@@ -161,6 +164,7 @@ export function TopTabs() {
                 >
                   {tab.label}
                   {tab.href === "/pipeline" && <PipelineBadge />}
+                  {tab.href === "/questions" && <QuestionsBadge />}
                   {tab.href === "/admin" && <AdminQuotaBadge />}
                 </Link>
               );

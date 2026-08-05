@@ -12,6 +12,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   client_created: "Created client",
   client_updated: "Updated client",
   team_member_updated: "Updated team member",
+  question_asked: "Asked a question",
+  question_answered: "Answered a question",
 };
 
 export function activityLabel(action: string): string {

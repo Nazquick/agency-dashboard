@@ -26,6 +26,7 @@ const TABS = [
   { href: "/portal", label: "Pipeline" },
   { href: "/portal/calendar", label: "Calendar" },
   { href: "/portal/request", label: "Request Task" },
+  { href: "/portal/questions", label: "Questions" },
   { href: "/portal/analytics", label: "Analytics" },
 ];
 
