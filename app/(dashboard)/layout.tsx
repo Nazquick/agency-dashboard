@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { UserProvider, RolesProvider, GroupsProvider } from "@/components/providers/user-provider";
 import { SessionHeartbeat } from "@/components/providers/session-heartbeat";
 import { TopTabs } from "@/components/nav/top-tabs";
+import { PushNotificationsManager } from "@/components/push/push-notifications-manager";
 
 export default async function DashboardLayout({
   children,
@@ -39,6 +40,7 @@ export default async function DashboardLayout({
         <GroupsProvider groups={groups ?? []}>
           <div className="min-h-screen bg-muted/40">
             <SessionHeartbeat userId={profile.id} />
+            <PushNotificationsManager />
             <TopTabs />
             <main className="mx-auto max-w-7xl p-4 sm:p-6">{children}</main>
           </div>
