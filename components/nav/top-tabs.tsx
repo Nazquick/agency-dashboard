@@ -9,6 +9,7 @@ import { useUser, useRoles } from "@/components/providers/user-provider";
 import { PipelineBadge } from "@/components/nav/pipeline-badge";
 import { AdminQuotaBadge } from "@/components/nav/admin-quota-badge";
 import { QuestionsBadge } from "@/components/nav/questions-badge";
+import { BountiesBadge } from "@/components/nav/bounties-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DyorWordmark } from "@/components/branding/dyor-wordmark";
 import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
 const BASE_TABS = [
   { href: "/clients", label: "Clients" },
   { href: "/pipeline", label: "Action Pipeline" },
+  { href: "/bounties", label: "Bounties" },
   { href: "/calendar", label: "Calendar" },
   { href: "/questions", label: "Questions" },
   { href: "/team", label: "Team" },
@@ -106,6 +108,7 @@ export function TopTabs() {
                 >
                   {tab.label}
                   {tab.href === "/pipeline" && <PipelineBadge />}
+                  {tab.href === "/bounties" && <BountiesBadge />}
                   {tab.href === "/questions" && <QuestionsBadge />}
                   {tab.href === "/admin" && <AdminQuotaBadge />}
                 </Link>
@@ -164,6 +167,7 @@ export function TopTabs() {
                 >
                   {tab.label}
                   {tab.href === "/pipeline" && <PipelineBadge />}
+                  {tab.href === "/bounties" && <BountiesBadge />}
                   {tab.href === "/questions" && <QuestionsBadge />}
                   {tab.href === "/admin" && <AdminQuotaBadge />}
                 </Link>

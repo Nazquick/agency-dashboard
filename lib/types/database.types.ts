@@ -1370,7 +1370,14 @@ export type Database = {
           deadline: string | null
           description: string | null
           id: string
+          is_special: boolean
           overage_charged: boolean
+          payout_amount: number | null
+          payout_approved_at: string | null
+          payout_approved_by: string | null
+          payout_method: string | null
+          payout_paid: boolean
+          payout_paid_at: string | null
           priority: Database["public"]["Enums"]["task_priority"]
           source: Database["public"]["Enums"]["task_source"]
           source_email_id: string | null
@@ -1391,7 +1398,14 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          is_special?: boolean
           overage_charged?: boolean
+          payout_amount?: number | null
+          payout_approved_at?: string | null
+          payout_approved_by?: string | null
+          payout_method?: string | null
+          payout_paid?: boolean
+          payout_paid_at?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           source?: Database["public"]["Enums"]["task_source"]
           source_email_id?: string | null
@@ -1412,7 +1426,14 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          is_special?: boolean
           overage_charged?: boolean
+          payout_amount?: number | null
+          payout_approved_at?: string | null
+          payout_approved_by?: string | null
+          payout_method?: string | null
+          payout_paid?: boolean
+          payout_paid_at?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           source?: Database["public"]["Enums"]["task_source"]
           source_email_id?: string | null
@@ -1440,6 +1461,13 @@ export type Database = {
           {
             foreignKeyName: "tasks_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_payout_approved_by_fkey"
+            columns: ["payout_approved_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1612,6 +1640,43 @@ export type Database = {
     }
     Functions: {
       accessible_client_ids: { Args: never; Returns: string[] }
+      claim_special_task: {
+        Args: { p_task_id: string }
+        Returns: {
+          ai_estimate_status: string | null
+          ai_estimated_minutes: number | null
+          archived: boolean
+          assignee_id: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          description: string | null
+          id: string
+          is_special: boolean
+          overage_charged: boolean
+          payout_amount: number | null
+          payout_approved_at: string | null
+          payout_approved_by: string | null
+          payout_method: string | null
+          payout_paid: boolean
+          payout_paid_at: string | null
+          priority: Database["public"]["Enums"]["task_priority"]
+          source: Database["public"]["Enums"]["task_source"]
+          source_email_id: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          task_type: string | null
+          title: string
+          updated_at: string
+          urgent_since: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tasks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       confirm_meetup_if_all_accepted: {
         Args: { p_proposal_id: string }
         Returns: undefined
@@ -1619,6 +1684,7 @@ export type Database = {
       current_client_group_id: { Args: never; Returns: string }
       current_client_id: { Args: never; Returns: string }
       current_role: { Args: never; Returns: string }
+      is_task_assignee: { Args: { p_task_id: string }; Returns: boolean }
     }
     Enums: {
       content_asset_type:

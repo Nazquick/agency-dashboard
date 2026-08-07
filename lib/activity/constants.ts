@@ -14,6 +14,10 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   team_member_updated: "Updated team member",
   question_asked: "Asked a question",
   question_answered: "Answered a question",
+  special_task_created: "Posted a bounty",
+  special_task_claimed: "Claimed a bounty",
+  special_task_delivered: "Delivered a bounty",
+  special_task_approved: "Approved a bounty",
 };
 
 export function activityLabel(action: string): string {
