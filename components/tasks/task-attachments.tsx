@@ -86,57 +86,74 @@ export function TaskAttachments({ taskId, taskTitle }: { taskId: string; taskTit
   }, [taskId]);
 
   async function handleUpload() {
-    const file = inputRef.current?.files?.[0];
-    if (!file) {
+    const files = Array.from(inputRef.current?.files ?? []);
+    if (files.length === 0) {
       toast.error("Choose a file first");
       return;
     }
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      toast.error("File is over the 50MB limit");
+
+    const oversized = files.filter((f) => f.size > MAX_ATTACHMENT_BYTES);
+    if (oversized.length > 0) {
+      toast.error(
+        oversized.length === 1
+          ? `"${oversized[0].name}" is over the 50MB limit`
+          : `${oversized.length} files are over the 50MB limit`
+      );
       return;
     }
 
     setUploading(true);
     const supabase = createClient();
-    const storagePath = `${taskId}/${category}/${Date.now()}-${file.name}`;
+    const failed: string[] = [];
+    let uploaded = 0;
 
-    const { error: uploadError } = await supabase.storage
-      .from("task-attachments")
-      .upload(storagePath, file);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const storagePath = `${taskId}/${category}/${Date.now()}-${i}-${file.name}`;
 
-    if (uploadError) {
-      setUploading(false);
-      toast.error(uploadError.message);
-      return;
+      const { error: uploadError } = await supabase.storage
+        .from("task-attachments")
+        .upload(storagePath, file);
+
+      if (uploadError) {
+        failed.push(file.name);
+        continue;
+      }
+
+      const { error: insertError } = await supabase.from("task_attachments").insert({
+        task_id: taskId,
+        uploaded_by: profile.id,
+        category,
+        storage_path: storagePath,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type || null,
+      });
+
+      if (insertError) {
+        failed.push(file.name);
+        continue;
+      }
+
+      uploaded++;
+      logActivity(supabase, {
+        actorId: profile.id,
+        action: "task_attachment_uploaded",
+        summary: `Uploaded "${file.name}" to task "${taskTitle}"`,
+        entityType: "task",
+        entityId: taskId,
+      });
     }
-
-    const { error: insertError } = await supabase.from("task_attachments").insert({
-      task_id: taskId,
-      uploaded_by: profile.id,
-      category,
-      storage_path: storagePath,
-      file_name: file.name,
-      file_size: file.size,
-      mime_type: file.type || null,
-    });
 
     setUploading(false);
-
-    if (insertError) {
-      toast.error(insertError.message);
-      return;
-    }
-
-    logActivity(supabase, {
-      actorId: profile.id,
-      action: "task_attachment_uploaded",
-      summary: `Uploaded "${file.name}" to task "${taskTitle}"`,
-      entityType: "task",
-      entityId: taskId,
-    });
-
-    toast.success("File uploaded");
     if (inputRef.current) inputRef.current.value = "";
+
+    if (uploaded > 0) {
+      toast.success(uploaded === 1 ? "File uploaded" : `${uploaded} files uploaded`);
+    }
+    if (failed.length > 0) {
+      toast.error(`Failed to upload: ${failed.join(", ")}`);
+    }
   }
 
   async function handleDelete(attachment: AttachmentRow) {
@@ -183,13 +200,14 @@ export function TaskAttachments({ taskId, taskTitle }: { taskId: string; taskTit
         <input
           ref={inputRef}
           type="file"
+          multiple
           className="block flex-1 text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium"
         />
         <Button type="button" size="sm" disabled={uploading} onClick={handleUpload}>
           {uploading ? "Uploading…" : "Upload"}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Max 50MB per file.</p>
+      <p className="text-xs text-muted-foreground">Max 50MB per file. You can select multiple files.</p>
 
       {!loading && attachments.length === 0 && (
         <p className="text-sm text-muted-foreground">No files yet.</p>
