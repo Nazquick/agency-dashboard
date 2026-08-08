@@ -83,7 +83,7 @@ export function PipelineBoard({
   showClientColumn = true,
 }: {
   initialTasks: TaskWithRelations[];
-  clients: Pick<Tables<"clients">, "id" | "name">[];
+  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   defaultClientId?: string;
   showClientColumn?: boolean;
@@ -92,7 +92,7 @@ export function PipelineBoard({
   const leader = isTeamLeader(profile.role);
   const [tasks, setTasks] = useState(initialTasks);
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
-  const [assigneeFilter, setAssigneeFilter] = useState<string>(leader ? ALL : ME);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<string>(ALL);
   const [showArchived, setShowArchived] = useState(false);
   const [assessingId, setAssessingId] = useState<string | null>(null);

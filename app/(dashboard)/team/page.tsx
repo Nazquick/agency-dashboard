@@ -27,7 +27,7 @@ export default async function TeamPage() {
       .neq("role", "client")
       .eq("active", false)
       .order("full_name"),
-    supabase.from("clients").select("id, name").eq("archived", false).order("name"),
+    supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
     supabase
       .from("meetup_proposals")
       .select(

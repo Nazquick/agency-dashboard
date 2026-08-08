@@ -30,7 +30,7 @@ export function TeamMemberCard({
   onRemoved,
 }: {
   member: Tables<"profiles">;
-  clients: Pick<Tables<"clients">, "id" | "name">[];
+  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   onUpdate: (member: Tables<"profiles">) => void;
   onRemoved: (memberId: string) => void;

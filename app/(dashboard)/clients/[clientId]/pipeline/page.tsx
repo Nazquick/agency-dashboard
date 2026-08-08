@@ -18,7 +18,7 @@ export default async function ClientPipelinePage({
       )
       .eq("client_id", clientId)
       .order("created_at", { ascending: false }),
-    supabase.from("clients").select("id, name").eq("archived", false).order("name"),
+    supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
     supabase
       .from("profiles")
       .select("id, full_name, role, is_external")

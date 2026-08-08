@@ -27,7 +27,7 @@ export function TeamGrid({
 }: {
   initialMembers: Tables<"profiles">[];
   initialDeactivatedMembers: Tables<"profiles">[];
-  clients: Pick<Tables<"clients">, "id" | "name">[];
+  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   initialProposals: MeetupProposalWithResponses[];
   tasks: WorkloadTask[];
   initialRoleRequests: RoleChangeRequestWithRelations[];

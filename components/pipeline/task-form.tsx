@@ -7,7 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useUser, useRoles } from "@/components/providers/user-provider";
+import { useUser, useRoles, useGroups } from "@/components/providers/user-provider";
 import { isTeamLeader, roleLabel } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
 import { CONTENT_TYPES, PRIORITIES, STATUSES } from "@/lib/tasks/constants";
@@ -36,6 +36,7 @@ import {
 
 const NONE = "__none__";
 const NO_TEMPLATE = "__no_template__";
+const GROUP_PREFIX = "group:";
 
 type TemplateWithSteps = Tables<"task_templates"> & {
   task_template_steps: Tables<"task_template_steps">[];
@@ -114,7 +115,7 @@ export function TaskForm({
   onDelete,
 }: {
   task?: Tables<"tasks">;
-  clients: Pick<Tables<"clients">, "id" | "name">[];
+  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   defaultClientId?: string;
   defaultAssigneeId?: string;
@@ -126,6 +127,7 @@ export function TaskForm({
 }) {
   const profile = useUser();
   const roles = useRoles();
+  const groups = useGroups();
   const leader = isTeamLeader(profile.role);
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -144,6 +146,7 @@ export function TaskForm({
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { errors },
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -226,12 +229,7 @@ export function TaskForm({
     setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
   }
 
-  async function assessAndAssignRole(
-    taskId: string,
-    title: string,
-    description: string | null,
-    taskType: string | null
-  ) {
+  async function assessRole(title: string, description: string | null, taskType: string | null) {
     try {
       const res = await fetch("/api/tasks/assess-role", {
         method: "POST",
@@ -244,17 +242,7 @@ export function TaskForm({
         return null;
       }
       const { role } = (await res.json()) as { role: Tables<"profiles">["role"] };
-      const assignee = profiles.find((p) => p.role === role);
-      if (!assignee) return null;
-
-      const supabase = createClient();
-      const { error } = await supabase.from("tasks").update({ assignee_id: assignee.id }).eq("id", taskId);
-      if (error) {
-        toast.error(error.message);
-        return null;
-      }
-      toast.success(`AI assigned this task to ${assignee.full_name} (${roleLabel(role, roles)})`);
-      return assignee;
+      return profiles.find((p) => p.role === role) ?? null;
     } catch {
       toast.error("AI role assessment failed");
       return null;
@@ -324,6 +312,15 @@ export function TaskForm({
       return;
     }
 
+    const groupId =
+      !task && values.client_id?.startsWith(GROUP_PREFIX) ? values.client_id.slice(GROUP_PREFIX.length) : null;
+    const groupClients = groupId ? clients.filter((c) => c.group_id === groupId) : null;
+
+    if (groupClients && groupClients.length > 0) {
+      await submitForGroup(groupClients, values, deadlineIso);
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
 
@@ -372,10 +369,14 @@ export function TaskForm({
 
     let finalAssigneeIds = assigneeIds;
     if (!task && finalAssigneeIds.length === 0 && payload.priority !== "urgent") {
-      const assignee = await assessAndAssignRole(taskId, payload.title, payload.description, payload.task_type);
+      const assignee = await assessRole(payload.title, payload.description, payload.task_type);
       if (assignee) {
-        result.data.assignee_id = assignee.id;
-        finalAssigneeIds = [assignee.id];
+        const { error } = await supabase.from("tasks").update({ assignee_id: assignee.id }).eq("id", taskId);
+        if (!error) {
+          toast.success(`AI assigned this task to ${assignee.full_name} (${roleLabel(assignee.role, roles)})`);
+          result.data.assignee_id = assignee.id;
+          finalAssigneeIds = [assignee.id];
+        }
       }
     }
 
@@ -426,6 +427,99 @@ export function TaskForm({
       setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
     }
     onSuccess?.(result.data, finalAssigneeIds);
+  }
+
+  async function submitForGroup(
+    groupClients: Pick<Tables<"clients">, "id" | "name" | "group_id">[],
+    values: TaskFormValues,
+    deadlineIso: string | null
+  ) {
+    setLoading(true);
+    const supabase = createClient();
+
+    const basePayload = {
+      title: values.title,
+      description: values.description || null,
+      task_type: values.task_type || null,
+      deadline: deadlineIso,
+      priority: values.priority,
+      status: values.status,
+    };
+
+    const { data: insertedTasks, error } = await supabase
+      .from("tasks")
+      .insert(groupClients.map((c) => ({ ...basePayload, client_id: c.id, assignee_id: assigneeIds[0] ?? null })))
+      .select();
+
+    if (error || !insertedTasks) {
+      setLoading(false);
+      toast.error(error?.message ?? "Failed to create tasks");
+      return;
+    }
+
+    const validSteps = steps.filter((s) => s.description.trim().length > 0);
+    if (validSteps.length > 0) {
+      const { error: stepsError } = await supabase.from("task_steps").insert(
+        insertedTasks.flatMap((t) =>
+          validSteps.map((s, index) => ({
+            task_id: t.id,
+            position: index + 1,
+            description: s.description,
+            estimated_minutes: s.estimated_minutes ? Number(s.estimated_minutes) : null,
+            software: s.software || null,
+            equipment: s.equipment || null,
+            transportation: s.transportation || null,
+            other_cost: s.other_cost || null,
+          }))
+        )
+      );
+      if (stepsError) toast.error(`Steps not saved: ${stepsError.message}`);
+    }
+
+    let finalAssigneeIds = assigneeIds;
+    if (finalAssigneeIds.length === 0 && basePayload.priority !== "urgent") {
+      const assignee = await assessRole(basePayload.title, basePayload.description, basePayload.task_type);
+      if (assignee) {
+        const { error: assignError } = await supabase
+          .from("tasks")
+          .update({ assignee_id: assignee.id })
+          .in(
+            "id",
+            insertedTasks.map((t) => t.id)
+          );
+        if (!assignError) {
+          toast.success(`AI assigned these tasks to ${assignee.full_name} (${roleLabel(assignee.role, roles)})`);
+          finalAssigneeIds = [assignee.id];
+        }
+      }
+    }
+
+    if (finalAssigneeIds.length > 0) {
+      const { error: assigneesError } = await supabase.from("task_assignees").insert(
+        insertedTasks.flatMap((t) => finalAssigneeIds.map((profileId) => ({ task_id: t.id, profile_id: profileId })))
+      );
+      if (assigneesError) toast.error(`Assignees not saved: ${assigneesError.message}`);
+    }
+
+    setLoading(false);
+    toast.success(`Created ${insertedTasks.length} tasks across ${groupClients.length} locations`);
+
+    for (const t of insertedTasks) {
+      logActivity(supabase, {
+        actorId: profile.id,
+        action: "task_created",
+        summary: `Created task "${basePayload.title}" (all locations)`,
+        entityType: "task",
+        entityId: t.id,
+      });
+    }
+
+    setOpen(false);
+    reset();
+    setSteps([]);
+    setTemplateId(NO_TEMPLATE);
+    setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
+    onSuccess?.(insertedTasks[0], finalAssigneeIds);
   }
 
   return (
@@ -506,6 +600,17 @@ export function TaskForm({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>No client (internal)</SelectItem>
+                      {!task &&
+                        !defaultClientId &&
+                        groups.map((g) => {
+                          const members = clients.filter((c) => c.group_id === g.id);
+                          if (members.length === 0) return null;
+                          return (
+                            <SelectItem key={`group:${g.id}`} value={`${GROUP_PREFIX}${g.id}`}>
+                              All {g.name} ({members.length})
+                            </SelectItem>
+                          );
+                        })}
                       {clients.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -515,6 +620,11 @@ export function TaskForm({
                   </Select>
                 )}
               />
+              {watch("client_id")?.startsWith(GROUP_PREFIX) && (
+                <p className="text-xs text-muted-foreground">
+                  Creates the same task at every location in this group.
+                </p>
+              )}
             </div>
           </div>
 
