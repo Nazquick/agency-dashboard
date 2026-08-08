@@ -11,6 +11,7 @@ import {
   type TaskStatus,
 } from "@/lib/tasks/constants";
 import type { Tables } from "@/lib/types/database.types";
+import { TaskAttachments } from "@/components/tasks/task-attachments";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -27,6 +28,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const ALL = "__all__";
 
@@ -57,6 +64,7 @@ export function ClientPipelineTable({
   const [tasks, setTasks] = useState(initialTasks);
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
   const [locationFilter, setLocationFilter] = useState<string>(ALL);
+  const [selectedTask, setSelectedTask] = useState<PortalTask | null>(null);
   const showLocation = clients.length > 1;
 
   useEffect(() => {
@@ -155,7 +163,11 @@ export function ClientPipelineTable({
             </TableHeader>
             <TableBody>
               {filtered.map((task) => (
-                <TableRow key={task.id}>
+                <TableRow
+                  key={task.id}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedTask(task)}
+                >
                   {showLocation && (
                     <TableCell className="text-muted-foreground">
                       {task.client?.name ?? "—"}
@@ -179,6 +191,38 @@ export function ClientPipelineTable({
           </Table>
         </div>
       )}
+
+      <Dialog open={selectedTask !== null} onOpenChange={(open) => !open && setSelectedTask(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          {selectedTask && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedTask.title}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className={STATUS_BADGE_CLASS[selectedTask.status as TaskStatus]}>
+                    {statusLabel(selectedTask.status as TaskStatus)}
+                  </Badge>
+                  {showLocation && selectedTask.client && (
+                    <span className="text-sm text-muted-foreground">{selectedTask.client.name}</span>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    {taskTypeLabel(selectedTask.task_type)}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    Due {formatDeadline(selectedTask.deadline)}
+                  </span>
+                </div>
+                {selectedTask.description && (
+                  <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+                )}
+                <TaskAttachments taskId={selectedTask.id} taskTitle={selectedTask.title} />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

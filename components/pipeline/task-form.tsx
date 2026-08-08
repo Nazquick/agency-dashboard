@@ -13,6 +13,7 @@ import { logActivity } from "@/lib/activity/log";
 import { CONTENT_TYPES, PRIORITIES, STATUSES } from "@/lib/tasks/constants";
 import { leadTimeViolation } from "@/lib/tasks/lead-time";
 import type { Tables } from "@/lib/types/database.types";
+import { TaskAttachments } from "@/components/tasks/task-attachments";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -682,6 +683,8 @@ export function TaskForm({
               </div>
             )}
           </div>
+
+          {task && <TaskAttachments taskId={task.id} taskTitle={task.title} />}
 
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Saving…" : task ? "Save changes" : "Create task"}

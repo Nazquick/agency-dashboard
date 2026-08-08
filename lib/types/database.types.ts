@@ -1243,6 +1243,57 @@ export type Database = {
           },
         ]
       }
+      task_attachments: {
+        Row: {
+          category: string
+          created_at: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string | null
+          storage_path: string
+          task_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          file_name: string
+          file_size: number
+          id?: string
+          mime_type?: string | null
+          storage_path: string
+          task_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          storage_path?: string
+          task_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_steps: {
         Row: {
           created_at: string
@@ -1640,6 +1691,7 @@ export type Database = {
     }
     Functions: {
       accessible_client_ids: { Args: never; Returns: string[] }
+      can_access_task: { Args: { p_task_id: string }; Returns: boolean }
       claim_special_task: {
         Args: { p_task_id: string }
         Returns: {

@@ -32,6 +32,18 @@ export function minLeadHoursFor(value: string | null): number {
   return CONTENT_TYPES.find((t) => t.value === value)?.minLeadHours ?? 0;
 }
 
+export const ATTACHMENT_CATEGORIES: { value: string; label: string }[] = [
+  { value: "reference", label: "Reference" },
+  { value: "graphic_element", label: "Graphic to include" },
+  { value: "finished_work", label: "Finished work" },
+];
+
+export function attachmentCategoryLabel(value: string): string {
+  return ATTACHMENT_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
+
+export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
+
 export const PRIORITIES: { value: TaskPriority; label: string }[] = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
