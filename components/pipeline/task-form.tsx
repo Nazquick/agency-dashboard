@@ -437,6 +437,7 @@ export function TaskForm({
     setLoading(true);
     const supabase = createClient();
 
+    const batchId = crypto.randomUUID();
     const basePayload = {
       title: values.title,
       description: values.description || null,
@@ -444,6 +445,7 @@ export function TaskForm({
       deadline: deadlineIso,
       priority: values.priority,
       status: values.status,
+      batch_id: batchId,
     };
 
     const { data: insertedTasks, error } = await supabase
@@ -502,7 +504,7 @@ export function TaskForm({
     }
 
     setLoading(false);
-    toast.success(`Created ${insertedTasks.length} tasks across ${groupClients.length} locations`);
+    toast.success(`Created "${basePayload.title}" for all ${groupClients.length} locations`);
 
     for (const t of insertedTasks) {
       logActivity(supabase, {

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ChevronDown, ChevronRight, Layers } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
-import { useUser } from "@/components/providers/user-provider";
+import { useUser, useGroups } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
 import {
@@ -74,6 +75,35 @@ function formatDeadline(value: string | null) {
   });
 }
 
+type RenderItem =
+  | { type: "single"; task: TaskWithRelations }
+  | { type: "group"; batchId: string; tasks: TaskWithRelations[] };
+
+// Tasks created together via "All {group}" bulk-create share a batch_id —
+// collapse those into one row in the pipeline view instead of listing
+// every location separately, as long as more than one sibling is still
+// visible after filtering (a lone survivor just renders like any other
+// task).
+function groupByBatch(list: TaskWithRelations[]): RenderItem[] {
+  const seen = new Set<string>();
+  const items: RenderItem[] = [];
+  for (const t of list) {
+    if (!t.batch_id) {
+      items.push({ type: "single", task: t });
+      continue;
+    }
+    if (seen.has(t.batch_id)) continue;
+    seen.add(t.batch_id);
+    const members = list.filter((x) => x.batch_id === t.batch_id);
+    if (members.length > 1) {
+      items.push({ type: "group", batchId: t.batch_id, tasks: members });
+    } else {
+      items.push({ type: "single", task: t });
+    }
+  }
+  return items;
+}
+
 export function PipelineBoard({
   initialTasks,
   clients,
@@ -88,6 +118,7 @@ export function PipelineBoard({
   showClientColumn?: boolean;
 }) {
   const profile = useUser();
+  const groups = useGroups();
   const leader = isTeamLeader(profile.role);
   const [tasks, setTasks] = useState(initialTasks);
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
@@ -96,6 +127,16 @@ export function PipelineBoard({
   const [showArchived, setShowArchived] = useState(false);
   const [assessingId, setAssessingId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
+
+  function toggleBatch(batchId: string) {
+    setExpandedBatches((prev) => {
+      const next = new Set(prev);
+      if (next.has(batchId)) next.delete(batchId);
+      else next.add(batchId);
+      return next;
+    });
+  }
 
   useEffect(() => {
     let supabase: SupabaseClient;
@@ -379,7 +420,11 @@ export function PipelineBoard({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  activeTasks.map((task) => renderRow(task))
+                  groupByBatch(activeTasks).map((item) =>
+                    item.type === "group"
+                      ? renderGroupRow(item.batchId, item.tasks)
+                      : renderRow(item.task)
+                  )
                 )}
               </TableBody>
             </Table>
@@ -404,7 +449,13 @@ export function PipelineBoard({
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>{doneTasks.map((task) => renderRow(task, { muted: true }))}</TableBody>
+                  <TableBody>
+                    {groupByBatch(doneTasks).map((item) =>
+                      item.type === "group"
+                        ? renderGroupRow(item.batchId, item.tasks, { muted: true })
+                        : renderRow(item.task, { muted: true })
+                    )}
+                  </TableBody>
                 </Table>
               </div>
             </div>
@@ -414,13 +465,82 @@ export function PipelineBoard({
     </div>
   );
 
-  function renderRow(task: TaskWithRelations, options?: { muted?: boolean }) {
+  function renderGroupRow(
+    batchId: string,
+    groupTasks: TaskWithRelations[],
+    options?: { muted?: boolean }
+  ) {
     const muted = options?.muted ?? false;
+    const expanded = expandedBatches.has(batchId);
+    const first = groupTasks[0];
+    const clientGroupId = clients.find((c) => c.id === first.client_id)?.group_id;
+    const groupName = clientGroupId ? groups.find((g) => g.id === clientGroupId)?.name : undefined;
+    const label = groupName ? `All ${groupName}` : "All locations";
+    const doneCount = groupTasks.filter((t) => t.status === "done").length;
+    const uniqueAssignees = Array.from(
+      new Map(groupTasks.flatMap((t) => t.assignees).map((a) => [a.id, a])).values()
+    );
+    const priorities = new Set(groupTasks.map((t) => t.priority));
+    const sharedPriority = priorities.size === 1 ? (first.priority as TaskPriority) : null;
+
+    return (
+      <Fragment key={`group-${batchId}`}>
+        <TableRow className={cn("bg-muted/40", muted && "opacity-70")}>
+          <TableCell>
+            <Layers className="h-4 w-4 text-muted-foreground" aria-hidden />
+          </TableCell>
+          <TableCell className="font-medium">
+            <button
+              type="button"
+              onClick={() => toggleBatch(batchId)}
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-muted/60"
+            >
+              {expanded ? (
+                <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+              )}
+              {first.title}
+            </button>
+          </TableCell>
+          {showClientColumn && (
+            <TableCell className="text-muted-foreground">
+              {label} ({groupTasks.length})
+            </TableCell>
+          )}
+          <TableCell className="text-muted-foreground">
+            {uniqueAssignees.length > 0 ? uniqueAssignees.map((a) => a.full_name).join(", ") : "Unassigned"}
+          </TableCell>
+          <TableCell>
+            {sharedPriority ? (
+              <Badge className={PRIORITY_BADGE_CLASS[sharedPriority]}>{priorityLabel(sharedPriority)}</Badge>
+            ) : (
+              <Badge variant="secondary">Mixed</Badge>
+            )}
+          </TableCell>
+          <TableCell className="text-muted-foreground">
+            {doneCount}/{groupTasks.length} done
+          </TableCell>
+          <TableCell className="text-muted-foreground">{formatDeadline(first.deadline)}</TableCell>
+          <TableCell className="text-right">
+            <Button variant="outline" size="sm" onClick={() => toggleBatch(batchId)}>
+              {expanded ? "Collapse" : "Expand"}
+            </Button>
+          </TableCell>
+        </TableRow>
+        {expanded && groupTasks.map((t) => renderRow(t, { muted, nested: true }))}
+      </Fragment>
+    );
+  }
+
+  function renderRow(task: TaskWithRelations, options?: { muted?: boolean; nested?: boolean }) {
+    const muted = options?.muted ?? false;
+    const nested = options?.nested ?? false;
     const color = taskColor(task.priority as TaskPriority, task.assignee?.role);
     const flagUrgent = !muted && isLongUrgent(task);
 
     return (
-      <TableRow key={task.id} className={muted ? "opacity-70" : undefined}>
+      <TableRow key={task.id} className={cn(muted && "opacity-70", nested && "bg-muted/10")}>
         <TableCell>
           {color ? (
             <TaskColorDot color={color} title={TASK_COLOR_LABEL[color]} />
@@ -453,6 +573,7 @@ export function PipelineBoard({
             }}
             className={cn(
               "inline-flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-muted/60",
+              nested && "ml-4",
               flagUrgent && "urgent-stroke"
             )}
             title={flagUrgent ? "Urgent for more than 24 hours" : undefined}
