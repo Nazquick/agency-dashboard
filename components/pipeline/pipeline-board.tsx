@@ -12,7 +12,6 @@ import {
   PRIORITIES,
   STATUSES,
   PRIORITY_BADGE_CLASS,
-  STATUS_BADGE_CLASS,
   PRIORITY_RANK,
   priorityLabel,
   statusLabel,
@@ -173,10 +172,6 @@ export function PipelineBoard({
     done.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
     return { activeTasks: active, doneTasks: done };
   }, [filtered]);
-
-  function canEdit(task: TaskWithRelations) {
-    return leader || task.assignees.some((a) => a.id === profile.id);
-  }
 
   async function handleStatusChange(task: TaskWithRelations, status: TaskStatus) {
     const supabase = createClient();
@@ -447,23 +442,18 @@ export function PipelineBoard({
         </TableCell>
         <TableCell className="font-medium">
           <div
-            role={canEdit(task) ? "button" : undefined}
-            tabIndex={canEdit(task) ? 0 : undefined}
-            onClick={canEdit(task) ? () => setOpenTaskId(task.id) : undefined}
-            onKeyDown={
-              canEdit(task)
-                ? (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setOpenTaskId(task.id);
-                    }
-                  }
-                : undefined
-            }
+            role="button"
+            tabIndex={0}
+            onClick={() => setOpenTaskId(task.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setOpenTaskId(task.id);
+              }
+            }}
             className={cn(
-              "inline-flex items-center gap-2 rounded-md px-2 py-1",
-              flagUrgent && "urgent-stroke",
-              canEdit(task) && "cursor-pointer hover:bg-muted/60"
+              "inline-flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-muted/60",
+              flagUrgent && "urgent-stroke"
             )}
             title={flagUrgent ? "Urgent for more than 24 hours" : undefined}
           >
@@ -489,74 +479,64 @@ export function PipelineBoard({
           </Badge>
         </TableCell>
         <TableCell>
-          {canEdit(task) ? (
-            <Select
-              value={task.status}
-              onValueChange={(v) => handleStatusChange(task, v as TaskStatus)}
-            >
-              <SelectTrigger className="h-8 w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUSES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Badge className={STATUS_BADGE_CLASS[task.status as TaskStatus]}>
-              {statusLabel(task.status as TaskStatus)}
-            </Badge>
-          )}
+          <Select
+            value={task.status}
+            onValueChange={(v) => handleStatusChange(task, v as TaskStatus)}
+          >
+            <SelectTrigger className="h-8 w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </TableCell>
         <TableCell className="text-muted-foreground">{formatDeadline(task.deadline)}</TableCell>
         <TableCell className="text-right">
-          {canEdit(task) && (
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setOpenTaskId(task.id)}>
-                Edit
-              </Button>
-              <TaskForm
-                task={task}
-                clients={clients}
-                profiles={profiles}
-                defaultClientId={defaultClientId}
-                open={openTaskId === task.id}
-                onOpenChange={(v) => setOpenTaskId(v ? task.id : null)}
-                onSuccess={(updated, assigneeIds) =>
-                  setTasks((prev) =>
-                    prev.map((t) =>
-                      t.id === updated.id
-                        ? {
-                            ...updated,
-                            client: clients.find((c) => c.id === updated.client_id) ?? null,
-                            assignee: profiles.find((p) => p.id === updated.assignee_id)
-                              ? {
-                                  id: updated.assignee_id!,
-                                  full_name: profiles.find((p) => p.id === updated.assignee_id)!
-                                    .full_name,
-                                  role: profiles.find((p) => p.id === updated.assignee_id)!.role,
-                                }
-                              : null,
-                            assignees: resolveAssignees(assigneeIds, profiles),
-                          }
-                        : t
-                    )
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setOpenTaskId(task.id)}>
+              Edit
+            </Button>
+            <TaskForm
+              task={task}
+              clients={clients}
+              profiles={profiles}
+              defaultClientId={defaultClientId}
+              open={openTaskId === task.id}
+              onOpenChange={(v) => setOpenTaskId(v ? task.id : null)}
+              onSuccess={(updated, assigneeIds) =>
+                setTasks((prev) =>
+                  prev.map((t) =>
+                    t.id === updated.id
+                      ? {
+                          ...updated,
+                          client: clients.find((c) => c.id === updated.client_id) ?? null,
+                          assignee: profiles.find((p) => p.id === updated.assignee_id)
+                            ? {
+                                id: updated.assignee_id!,
+                                full_name: profiles.find((p) => p.id === updated.assignee_id)!
+                                  .full_name,
+                                role: profiles.find((p) => p.id === updated.assignee_id)!.role,
+                              }
+                            : null,
+                          assignees: resolveAssignees(assigneeIds, profiles),
+                        }
+                      : t
                   )
-                }
-                onDelete={(deletedId) =>
-                  setTasks((prev) => prev.filter((t) => t.id !== deletedId))
-                }
-              />
-              {leader && (
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(task)}>
-                  Delete
-                </Button>
-              )}
-            </div>
-          )}
+                )
+              }
+              onDelete={(deletedId) => setTasks((prev) => prev.filter((t) => t.id !== deletedId))}
+            />
+            {leader && (
+              <Button variant="ghost" size="sm" onClick={() => handleDelete(task)}>
+                Delete
+              </Button>
+            )}
+          </div>
         </TableCell>
       </TableRow>
     );
