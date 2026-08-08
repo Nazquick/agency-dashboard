@@ -24,6 +24,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 
 const NONE = "__none__";
+const ALL_LOCATIONS = "__all__";
 
 const requestSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -45,6 +46,7 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { errors },
   } = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
@@ -57,10 +59,12 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
       priority: "medium",
     },
   });
+  const allLocationsSelected = watch("client_id") === ALL_LOCATIONS;
 
   async function onSubmit(values: RequestFormValues) {
-    const clientId = values.client_id ?? clients[0]?.id;
-    if (!clientId) {
+    const allLocations = values.client_id === ALL_LOCATIONS;
+    const targetClients = allLocations ? clients : clients.filter((c) => c.id === values.client_id);
+    if (targetClients.length === 0) {
       toast.error("Choose a location");
       return;
     }
@@ -77,19 +81,20 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
 
     const { data, error } = await supabase
       .from("tasks")
-      .insert({
-        title: values.title,
-        description: values.description || null,
-        task_type: values.task_type || null,
-        client_id: clientId,
-        deadline: deadlineIso,
-        priority: values.priority,
-        status: "not_started",
-        assignee_id: null,
-        source: "client",
-      })
-      .select()
-      .single();
+      .insert(
+        targetClients.map((c) => ({
+          title: values.title,
+          description: values.description || null,
+          task_type: values.task_type || null,
+          client_id: c.id,
+          deadline: deadlineIso,
+          priority: values.priority,
+          status: "not_started" as const,
+          assignee_id: null,
+          source: "client" as const,
+        }))
+      )
+      .select();
 
     setLoading(false);
 
@@ -98,15 +103,22 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
       return;
     }
 
-    logActivity(supabase, {
-      actorId: profile.id,
-      action: "task_requested",
-      summary: `Requested task "${values.title}"`,
-      entityType: "task",
-      entityId: data.id,
-    });
+    for (const task of data) {
+      const client = targetClients.find((c) => c.id === task.client_id);
+      logActivity(supabase, {
+        actorId: profile.id,
+        action: "task_requested",
+        summary: allLocations
+          ? `Requested task "${values.title}" for ${client?.name ?? "a location"} (all locations)`
+          : `Requested task "${values.title}"`,
+        entityType: "task",
+        entityId: task.id,
+      });
+    }
 
-    toast.success("Sent to the team");
+    toast.success(
+      allLocations ? `Sent to the team for all ${targetClients.length} locations` : "Sent to the team"
+    );
     reset({
       title: "",
       description: "",
@@ -152,6 +164,7 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
                         <SelectValue placeholder="Select location" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={ALL_LOCATIONS}>All locations ({clients.length})</SelectItem>
                         {clients.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
                             {c.name}
@@ -161,6 +174,12 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
                     </Select>
                   )}
                 />
+                {allLocationsSelected && (
+                  <p className="text-xs text-muted-foreground">
+                    Creates the same task at every location — each location is charged its
+                    own credit cost from its own monthly quota.
+                  </p>
+                )}
               </div>
             )}
 
