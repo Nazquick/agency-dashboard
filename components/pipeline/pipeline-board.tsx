@@ -1,8 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { Layers } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
@@ -129,16 +129,6 @@ export function PipelineBoard({
   const [showArchived, setShowArchived] = useState(false);
   const [assessingId, setAssessingId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
-  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
-
-  function toggleBatch(batchId: string) {
-    setExpandedBatches((prev) => {
-      const next = new Set(prev);
-      if (next.has(batchId)) next.delete(batchId);
-      else next.add(batchId);
-      return next;
-    });
-  }
 
   useEffect(() => {
     let supabase: SupabaseClient;
@@ -499,17 +489,19 @@ export function PipelineBoard({
     </div>
   );
 
+  // A group row is a read-only summary — the 9 underlying per-location
+  // tasks are never exposed here. To edit one location's copy, go to that
+  // client's own pipeline page, where it renders as a normal single task.
   function renderGroupRow(
     batchId: string,
     groupTasks: TaskWithRelations[],
     options?: { muted?: boolean }
   ) {
     const muted = options?.muted ?? false;
-    const expanded = expandedBatches.has(batchId);
     const first = groupTasks[0];
     const clientGroupId = clients.find((c) => c.id === first.client_id)?.group_id;
     const groupName = clientGroupId ? groups.find((g) => g.id === clientGroupId)?.name : undefined;
-    const label = groupName ? `All ${groupName}` : "All locations";
+    const label = groupName ? `${groupName} (ALL)` : "All locations";
     const doneCount = groupTasks.filter((t) => t.status === "done").length;
     const uniqueAssignees = Array.from(
       new Map(groupTasks.flatMap((t) => t.assignees).map((a) => [a.id, a])).values()
@@ -518,52 +510,30 @@ export function PipelineBoard({
     const sharedPriority = priorities.size === 1 ? (first.priority as TaskPriority) : null;
 
     return (
-      <Fragment key={`group-${batchId}`}>
-        <TableRow className={cn("bg-muted/40", muted && "opacity-70")}>
-          <TableCell>
+      <TableRow key={`group-${batchId}`} className={cn("bg-muted/40", muted && "opacity-70")}>
+        <TableCell>
+          <span title={`Assigned to ${label}`}>
             <Layers className="h-4 w-4 text-muted-foreground" aria-hidden />
-          </TableCell>
-          <TableCell className="font-medium">
-            <button
-              type="button"
-              onClick={() => toggleBatch(batchId)}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-muted/60"
-            >
-              {expanded ? (
-                <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
-              )}
-              {first.title}
-            </button>
-          </TableCell>
-          {showClientColumn && (
-            <TableCell className="text-muted-foreground">
-              {label} ({groupTasks.length})
-            </TableCell>
+          </span>
+        </TableCell>
+        <TableCell className="font-medium">{first.title}</TableCell>
+        {showClientColumn && <TableCell className="text-muted-foreground">{label}</TableCell>}
+        <TableCell className="text-muted-foreground">
+          {uniqueAssignees.length > 0 ? uniqueAssignees.map((a) => a.full_name).join(", ") : "Unassigned"}
+        </TableCell>
+        <TableCell>
+          {sharedPriority ? (
+            <Badge className={PRIORITY_BADGE_CLASS[sharedPriority]}>{priorityLabel(sharedPriority)}</Badge>
+          ) : (
+            <Badge variant="secondary">Mixed</Badge>
           )}
-          <TableCell className="text-muted-foreground">
-            {uniqueAssignees.length > 0 ? uniqueAssignees.map((a) => a.full_name).join(", ") : "Unassigned"}
-          </TableCell>
-          <TableCell>
-            {sharedPriority ? (
-              <Badge className={PRIORITY_BADGE_CLASS[sharedPriority]}>{priorityLabel(sharedPriority)}</Badge>
-            ) : (
-              <Badge variant="secondary">Mixed</Badge>
-            )}
-          </TableCell>
-          <TableCell className="text-muted-foreground">
-            {doneCount}/{groupTasks.length} done
-          </TableCell>
-          <TableCell className="text-muted-foreground">{formatDeadline(first.deadline)}</TableCell>
-          <TableCell className="text-right">
-            <Button variant="outline" size="sm" onClick={() => toggleBatch(batchId)}>
-              {expanded ? "Collapse" : "Expand"}
-            </Button>
-          </TableCell>
-        </TableRow>
-        {expanded && groupTasks.map((t) => renderRow(t, { muted, nested: true }))}
-      </Fragment>
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {doneCount}/{groupTasks.length} done
+        </TableCell>
+        <TableCell className="text-muted-foreground">{formatDeadline(first.deadline)}</TableCell>
+        <TableCell className="text-right text-xs text-muted-foreground">Edit per location</TableCell>
+      </TableRow>
     );
   }
 
