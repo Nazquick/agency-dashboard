@@ -47,6 +47,7 @@ import {
 
 const ALL = "__all__";
 const ME = "__me__";
+const GROUP_PREFIX = "group:";
 
 type AssigneeSummary = { id: string; full_name: string; role: Tables<"profiles">["role"] };
 
@@ -124,6 +125,7 @@ export function PipelineBoard({
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
   const [assigneeFilter, setAssigneeFilter] = useState<string>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<string>(ALL);
+  const [clientFilter, setClientFilter] = useState<string>(ALL);
   const [showArchived, setShowArchived] = useState(false);
   const [assessingId, setAssessingId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
@@ -188,9 +190,18 @@ export function PipelineBoard({
         !t.assignees.some((a) => a.id === assigneeFilter)
       )
         return false;
+      if (clientFilter !== ALL) {
+        if (clientFilter.startsWith(GROUP_PREFIX)) {
+          const groupId = clientFilter.slice(GROUP_PREFIX.length);
+          const client = clients.find((c) => c.id === t.client_id);
+          if (!client || client.group_id !== groupId) return false;
+        } else if (t.client_id !== clientFilter) {
+          return false;
+        }
+      }
       return true;
     });
-  }, [tasks, statusFilter, assigneeFilter, priorityFilter, showArchived, profile.id]);
+  }, [tasks, clients, statusFilter, assigneeFilter, priorityFilter, clientFilter, showArchived, profile.id]);
 
   // Done tasks move out of the active flow into a bulk area at the bottom
   // (still visible, not hidden) — the active list is then sorted so the
@@ -354,6 +365,29 @@ export function PipelineBoard({
               ))}
             </SelectContent>
           </Select>
+
+          {showClientColumn && (
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Client" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All clients</SelectItem>
+                {groups
+                  .filter((g) => clients.some((c) => c.group_id === g.id))
+                  .map((g) => (
+                    <SelectItem key={g.id} value={`${GROUP_PREFIX}${g.id}`}>
+                      {g.name} (ALL)
+                    </SelectItem>
+                  ))}
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <Checkbox
