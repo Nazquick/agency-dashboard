@@ -21,6 +21,7 @@ import {
   type TaskStatus,
 } from "@/lib/tasks/constants";
 import { TaskForm } from "@/components/pipeline/task-form";
+import { BatchTaskDialog } from "@/components/pipeline/batch-task-dialog";
 import { TaskColorDot } from "@/components/tasks/task-color-dot";
 import { taskColor, TASK_COLOR_LABEL } from "@/lib/tasks/color-code";
 import { flattenAssignees } from "@/lib/tasks/assignees";
@@ -129,6 +130,7 @@ export function PipelineBoard({
   const [showArchived, setShowArchived] = useState(false);
   const [assessingId, setAssessingId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [openBatchId, setOpenBatchId] = useState<string | null>(null);
 
   useEffect(() => {
     let supabase: SupabaseClient;
@@ -489,9 +491,11 @@ export function PipelineBoard({
     </div>
   );
 
-  // A group row is a read-only summary — the 9 underlying per-location
-  // tasks are never exposed here. To edit one location's copy, go to that
-  // client's own pipeline page, where it renders as a normal single task.
+  // A group row summarizes the 9 underlying per-location tasks. Editing
+  // shared fields (title/description/deadline/priority) and uploading
+  // finished work happen here, applied to every location at once via
+  // BatchTaskDialog; per-location status still lives on that client's own
+  // pipeline page, since progress can differ location to location.
   function renderGroupRow(
     batchId: string,
     groupTasks: TaskWithRelations[],
@@ -516,7 +520,22 @@ export function PipelineBoard({
             <Layers className="h-4 w-4 text-muted-foreground" aria-hidden />
           </span>
         </TableCell>
-        <TableCell className="font-medium">{first.title}</TableCell>
+        <TableCell className="font-medium">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setOpenBatchId(batchId)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setOpenBatchId(batchId);
+              }
+            }}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-muted/60"
+          >
+            {first.title}
+          </div>
+        </TableCell>
         {showClientColumn && <TableCell className="text-muted-foreground">{label}</TableCell>}
         <TableCell className="text-muted-foreground">
           {uniqueAssignees.length > 0 ? uniqueAssignees.map((a) => a.full_name).join(", ") : "Unassigned"}
@@ -532,7 +551,27 @@ export function PipelineBoard({
           {doneCount}/{groupTasks.length} done
         </TableCell>
         <TableCell className="text-muted-foreground">{formatDeadline(first.deadline)}</TableCell>
-        <TableCell className="text-right text-xs text-muted-foreground">Edit per location</TableCell>
+        <TableCell className="text-right">
+          <Button variant="outline" size="sm" onClick={() => setOpenBatchId(batchId)}>
+            Edit
+          </Button>
+        </TableCell>
+        {openBatchId === batchId && (
+          <BatchTaskDialog
+            tasks={groupTasks}
+            label={label}
+            open={openBatchId === batchId}
+            onOpenChange={(v) => setOpenBatchId(v ? batchId : null)}
+            onSuccess={(updated) =>
+              setTasks((prev) =>
+                prev.map((t) => {
+                  const match = updated.find((u) => u.id === t.id);
+                  return match ? { ...t, ...match } : t;
+                })
+              )
+            }
+          />
+        )}
       </TableRow>
     );
   }
