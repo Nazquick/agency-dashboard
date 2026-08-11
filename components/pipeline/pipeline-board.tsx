@@ -92,7 +92,9 @@ export function PipelineBoard({
   const groups = useGroups();
   const leader = isTeamLeader(profile.role);
   const [tasks, setTasks] = useState(initialTasks);
-  const [statusFilter, setStatusFilter] = useState<string>(ALL);
+  const [visibleStatuses, setVisibleStatuses] = useState<Set<TaskStatus>>(
+    new Set(STATUSES.map((s) => s.value))
+  );
   const [assigneeFilter, setAssigneeFilter] = useState<string>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<string>(ALL);
   const [clientFilter, setClientFilter] = useState<string>(ALL);
@@ -138,10 +140,12 @@ export function PipelineBoard({
     };
   }, [defaultClientId]);
 
-  const filtered = useMemo(() => {
+  // Every filter except the status toggles — used both to build the
+  // status-toggled list below and to count each status chip, so a chip's
+  // own count doesn't drop to 0 just because it's switched off.
+  const preStatusFiltered = useMemo(() => {
     return tasks.filter((t) => {
       if (!showArchived && t.archived) return false;
-      if (statusFilter !== ALL && t.status !== statusFilter) return false;
       if (priorityFilter !== ALL && t.priority !== priorityFilter) return false;
       if (assigneeFilter === ME && !t.assignees.some((a) => a.id === profile.id)) return false;
       if (
@@ -161,29 +165,54 @@ export function PipelineBoard({
       }
       return true;
     });
-  }, [tasks, clients, statusFilter, assigneeFilter, priorityFilter, clientFilter, showArchived, profile.id]);
+  }, [tasks, clients, assigneeFilter, priorityFilter, clientFilter, showArchived, profile.id]);
 
-  // Done tasks move out of the active flow into a bulk area at the bottom
-  // (still visible, not hidden) — the active list is then sorted so the
-  // most urgent tasks lead, nearest deadline breaking ties within a tier.
-  const { activeTasks, doneTasks } = useMemo(() => {
-    const active: TaskWithRelations[] = [];
-    const done: TaskWithRelations[] = [];
-    for (const t of filtered) {
-      (t.status === "done" ? done : active).push(t);
+  const statusCounts = useMemo(() => {
+    const counts = {} as Record<TaskStatus, number>;
+    for (const s of STATUSES) counts[s.value] = 0;
+    for (const t of preStatusFiltered) counts[t.status as TaskStatus]++;
+    return counts;
+  }, [preStatusFiltered]);
+
+  const filtered = useMemo(
+    () => preStatusFiltered.filter((t) => visibleStatuses.has(t.status as TaskStatus)),
+    [preStatusFiltered, visibleStatuses]
+  );
+
+  // Grouped by status so every status can be seen at once (toggled via the
+  // chips below) instead of one flat list — within each group, sorted so
+  // the most urgent tasks lead (nearest deadline breaking ties), except
+  // "done" which sorts by most-recently-completed first.
+  const statusGroups = useMemo(() => {
+    const groups = {} as Record<TaskStatus, TaskWithRelations[]>;
+    for (const s of STATUSES) {
+      const members = filtered.filter((t) => t.status === s.value);
+      if (s.value === "done") {
+        members.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      } else {
+        members.sort((a, b) => {
+          const rankDiff =
+            PRIORITY_RANK[b.priority as TaskPriority] - PRIORITY_RANK[a.priority as TaskPriority];
+          if (rankDiff !== 0) return rankDiff;
+          if (!a.deadline && !b.deadline) return 0;
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        });
+      }
+      groups[s.value] = members;
     }
-    active.sort((a, b) => {
-      const rankDiff =
-        PRIORITY_RANK[b.priority as TaskPriority] - PRIORITY_RANK[a.priority as TaskPriority];
-      if (rankDiff !== 0) return rankDiff;
-      if (!a.deadline && !b.deadline) return 0;
-      if (!a.deadline) return 1;
-      if (!b.deadline) return -1;
-      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-    });
-    done.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-    return { activeTasks: active, doneTasks: done };
+    return groups;
   }, [filtered]);
+
+  function toggleStatus(status: TaskStatus) {
+    setVisibleStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  }
 
   async function handleStatusChange(task: TaskWithRelations, status: TaskStatus) {
     const supabase = createClient();
@@ -282,20 +311,27 @@ export function PipelineBoard({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All statuses</SelectItem>
-              {STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-1.5">
+            {STATUSES.map((s) => {
+              const active = visibleStatuses.has(s.value);
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => toggleStatus(s.value)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    active
+                      ? "border-transparent bg-secondary text-secondary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {s.label} ({statusCounts[s.value]})
+                </button>
+              );
+            })}
+          </div>
 
           <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
             <SelectTrigger className="w-44">
@@ -388,65 +424,42 @@ export function PipelineBoard({
           <p className="text-sm text-muted-foreground">No tasks match these filters.</p>
         </div>
       ) : (
-        <>
-          <div className="overflow-x-auto rounded-lg border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Color</TableHead>
-                  <TableHead>Title</TableHead>
-                  {showClientColumn && <TableHead>Client</TableHead>}
-                  <TableHead>Assignee</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Deadline</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeTasks.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={showClientColumn ? 8 : 7}
-                      className="py-8 text-center text-sm text-muted-foreground"
-                    >
-                      Nothing active — everything left matches the filters is done.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  activeTasks.map((task) => renderRow(task))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {doneTasks.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-muted-foreground">
-                Done ({doneTasks.length})
-              </h2>
-              <div className="overflow-x-auto rounded-lg border bg-muted/30">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Color</TableHead>
-                      <TableHead>Title</TableHead>
-                      {showClientColumn && <TableHead>Client</TableHead>}
-                      <TableHead>Assignee</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Deadline</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {doneTasks.map((task) => renderRow(task, { muted: true }))}
-                  </TableBody>
-                </Table>
+        <div className="space-y-6">
+          {STATUSES.filter((s) => visibleStatuses.has(s.value)).map((s) => {
+            const group = statusGroups[s.value];
+            if (group.length === 0) return null;
+            const muted = s.value === "done";
+            return (
+              <div key={s.value} className="space-y-2">
+                <h2 className="text-sm font-semibold text-muted-foreground">
+                  {s.label} ({group.length})
+                </h2>
+                <div
+                  className={cn(
+                    "overflow-x-auto rounded-lg border bg-card",
+                    muted && "bg-muted/30"
+                  )}
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Color</TableHead>
+                        <TableHead>Title</TableHead>
+                        {showClientColumn && <TableHead>Client</TableHead>}
+                        <TableHead>Assignee</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Deadline</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>{group.map((task) => renderRow(task, { muted }))}</TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
-          )}
-        </>
+            );
+          })}
+        </div>
       )}
     </div>
   );

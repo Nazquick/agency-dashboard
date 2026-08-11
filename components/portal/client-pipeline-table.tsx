@@ -13,6 +13,7 @@ import {
 import type { Tables } from "@/lib/types/database.types";
 import { TaskAttachments } from "@/components/tasks/task-attachments";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -62,7 +63,9 @@ export function ClientPipelineTable({
   clients: { id: string; name: string }[];
 }) {
   const [tasks, setTasks] = useState(initialTasks);
-  const [statusFilter, setStatusFilter] = useState<string>(ALL);
+  const [visibleStatuses, setVisibleStatuses] = useState<Set<TaskStatus>>(
+    new Set(STATUSES.map((s) => s.value))
+  );
   const [locationFilter, setLocationFilter] = useState<string>(ALL);
   const [selectedTask, setSelectedTask] = useState<PortalTask | null>(null);
   const showLocation = clients.length > 1;
@@ -98,13 +101,54 @@ export function ClientPipelineTable({
     };
   }, []);
 
-  const filtered = useMemo(() => {
+  // Every filter except the status toggles — used both for the
+  // status-toggled list below and to count each status chip, so a chip's
+  // own count doesn't drop to 0 just because it's switched off.
+  const preStatusFiltered = useMemo(() => {
     return tasks.filter((t) => {
-      if (statusFilter !== ALL && t.status !== statusFilter) return false;
       if (locationFilter !== ALL && t.client_id !== locationFilter) return false;
       return true;
     });
-  }, [tasks, statusFilter, locationFilter]);
+  }, [tasks, locationFilter]);
+
+  const statusCounts = useMemo(() => {
+    const counts = {} as Record<TaskStatus, number>;
+    for (const s of STATUSES) counts[s.value] = 0;
+    for (const t of preStatusFiltered) counts[t.status as TaskStatus]++;
+    return counts;
+  }, [preStatusFiltered]);
+
+  const filtered = useMemo(
+    () => preStatusFiltered.filter((t) => visibleStatuses.has(t.status as TaskStatus)),
+    [preStatusFiltered, visibleStatuses]
+  );
+
+  const statusGroups = useMemo(() => {
+    const groups = {} as Record<TaskStatus, PortalTask[]>;
+    for (const s of STATUSES) {
+      const members = filtered.filter((t) => t.status === s.value);
+      members.sort((a, b) => {
+        if (s.value === "done") {
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        }
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      });
+      groups[s.value] = members;
+    }
+    return groups;
+  }, [filtered]);
+
+  function toggleStatus(status: TaskStatus) {
+    setVisibleStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -113,7 +157,7 @@ export function ClientPipelineTable({
           <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
           <p className="text-sm text-muted-foreground">Everything the team is working on for you.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {showLocation && (
             <Select value={locationFilter} onValueChange={setLocationFilter}>
               <SelectTrigger className="w-44">
@@ -129,19 +173,26 @@ export function ClientPipelineTable({
               </SelectContent>
             </Select>
           )}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All statuses</SelectItem>
-              {STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-1.5">
+            {STATUSES.map((s) => {
+              const active = visibleStatuses.has(s.value);
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => toggleStatus(s.value)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    active
+                      ? "border-transparent bg-secondary text-secondary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {s.label} ({statusCounts[s.value]})
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -150,45 +201,63 @@ export function ClientPipelineTable({
           <p className="text-sm text-muted-foreground">No tasks match these filters.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {showLocation && <TableHead>Location</TableHead>}
-                <TableHead>Title</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Deadline</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((task) => (
-                <TableRow
-                  key={task.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedTask(task)}
-                >
-                  {showLocation && (
-                    <TableCell className="text-muted-foreground">
-                      {task.client?.name ?? "—"}
-                    </TableCell>
+        <div className="space-y-6">
+          {STATUSES.filter((s) => visibleStatuses.has(s.value)).map((s) => {
+            const group = statusGroups[s.value];
+            if (group.length === 0) return null;
+            return (
+              <div key={s.value} className="space-y-2">
+                <h2 className="text-sm font-semibold text-muted-foreground">
+                  {s.label} ({group.length})
+                </h2>
+                <div
+                  className={cn(
+                    "overflow-x-auto rounded-lg border bg-card",
+                    s.value === "done" && "bg-muted/30"
                   )}
-                  <TableCell className="font-medium">{task.title}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {taskTypeLabel(task.task_type)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={STATUS_BADGE_CLASS[task.status as TaskStatus]}>
-                      {statusLabel(task.status as TaskStatus)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDeadline(task.deadline)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {showLocation && <TableHead>Location</TableHead>}
+                        <TableHead>Title</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Deadline</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.map((task) => (
+                        <TableRow
+                          key={task.id}
+                          className={cn("cursor-pointer", s.value === "done" && "opacity-70")}
+                          onClick={() => setSelectedTask(task)}
+                        >
+                          {showLocation && (
+                            <TableCell className="text-muted-foreground">
+                              {task.client?.name ?? "—"}
+                            </TableCell>
+                          )}
+                          <TableCell className="font-medium">{task.title}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {taskTypeLabel(task.task_type)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={STATUS_BADGE_CLASS[task.status as TaskStatus]}>
+                              {statusLabel(task.status as TaskStatus)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {formatDeadline(task.deadline)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
