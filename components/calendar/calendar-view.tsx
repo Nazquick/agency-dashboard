@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer, type View } from "react-big-calendar";
+import withDragAndDrop, { type EventInteractionArgs } from "react-big-calendar/lib/addons/dragAndDrop";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
@@ -35,11 +37,21 @@ export type CalendarEventWithRelations = Tables<"calendar_events"> & {
   task: { id: string; priority: Tables<"tasks">["priority"] } | null;
 };
 
+type BigCalendarEvent = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  resource: CalendarEventWithRelations;
+};
+
+const DnDCalendar = withDragAndDrop<BigCalendarEvent, object>(Calendar);
+
 function colorForAssignee(id: string | null) {
   return id ? colorForId(id) : "#6b7280";
 }
 
-function CalendarEventContent({ event }: { event: { title: string; resource: CalendarEventWithRelations } }) {
+function CalendarEventContent({ event }: { event: BigCalendarEvent }) {
   const e = event.resource;
   const color = taskColor(e.task?.priority ?? "medium", e.assignee?.role);
   return (
@@ -88,13 +100,14 @@ export function CalendarView({
   );
   const [view, setView] = useState<View>("month");
   const [date, setDate] = useState(new Date());
+  const [editingEvent, setEditingEvent] = useState<CalendarEventWithRelations | null>(null);
 
   const filteredEvents = useMemo(
     () => events.filter((e) => !showAssigneeFilter || visibleAssignees.has(e.assignee_id)),
     [events, visibleAssignees, showAssigneeFilter]
   );
 
-  const calendarEvents = useMemo(
+  const calendarEvents = useMemo<BigCalendarEvent[]>(
     () =>
       filteredEvents.map((e) => ({
         id: e.id,
@@ -122,25 +135,29 @@ export function CalendarView({
   const visibleColumnCount =
     2 + (defaultClientId ? 0 : 1) + (readOnly ? 0 : 1) + 1 + (readOnly ? 0 : 1);
 
-  function upsertLocal(saved: Tables<"calendar_events">) {
+  function upsertLocal(saved: Tables<"calendar_events">[], removedIds: string[] = []) {
+    if (saved.length === 0 && removedIds.length === 0) return;
     setEvents((prev) => {
-      const existing = prev.find((e) => e.id === saved.id);
-      const withRelations: CalendarEventWithRelations = {
-        ...saved,
-        client: clients.find((c) => c.id === saved.client_id) ?? null,
-        assignee: profiles.find((p) => p.id === saved.assignee_id)
-          ? {
-              id: saved.assignee_id,
-              full_name: profiles.find((p) => p.id === saved.assignee_id)!.full_name,
-              role: profiles.find((p) => p.id === saved.assignee_id)!.role,
-            }
-          : null,
-        task: existing?.task ?? null,
-      };
-      const exists = prev.some((e) => e.id === saved.id);
-      return exists
-        ? prev.map((e) => (e.id === saved.id ? withRelations : e))
-        : [withRelations, ...prev];
+      const withoutRemoved = prev.filter((e) => !removedIds.includes(e.id));
+      const withRelations = saved.map((row) => {
+        const existing = prev.find((e) => e.id === row.id);
+        const result: CalendarEventWithRelations = {
+          ...row,
+          client: clients.find((c) => c.id === row.client_id) ?? null,
+          assignee: profiles.find((p) => p.id === row.assignee_id)
+            ? {
+                id: row.assignee_id,
+                full_name: profiles.find((p) => p.id === row.assignee_id)!.full_name,
+                role: profiles.find((p) => p.id === row.assignee_id)!.role,
+              }
+            : null,
+          task: existing?.task ?? null,
+        };
+        return result;
+      });
+      const savedIds = new Set(saved.map((r) => r.id));
+      const untouched = withoutRemoved.filter((e) => !savedIds.has(e.id));
+      return [...withRelations, ...untouched];
     });
   }
 
@@ -154,6 +171,33 @@ export function CalendarView({
     }
     setEvents((prev) => prev.filter((e) => e.id !== event.id));
     toast.success("Event deleted");
+  }
+
+  // Dragging or resizing one occurrence moves the whole event group (every
+  // co-assignee) to the same new time — it's the same meeting for everyone,
+  // matching how EventForm's assignee list edits the group as a unit.
+  async function moveGroup(resource: CalendarEventWithRelations, start: Date, end: Date) {
+    if (!canEdit(resource)) return;
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .update({ starts_at: start.toISOString(), ends_at: end.toISOString() })
+      .eq("event_group_id", resource.event_group_id)
+      .select();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    upsertLocal(data ?? []);
+    toast.success("Event moved");
+  }
+
+  function handleEventDrop({ event, start, end }: EventInteractionArgs<BigCalendarEvent>) {
+    moveGroup(event.resource, new Date(start), new Date(end));
+  }
+
+  function handleEventResize({ event, start, end }: EventInteractionArgs<BigCalendarEvent>) {
+    moveGroup(event.resource, new Date(start), new Date(end));
   }
 
   return (
@@ -198,7 +242,7 @@ export function CalendarView({
 
       <div className="overflow-x-auto rounded-lg border bg-card p-2 sm:p-4">
         <div className="h-[calc(100dvh-336px)] min-h-[260px] max-h-[420px] sm:h-[480px] sm:max-h-none sm:min-w-[640px] lg:h-[560px]">
-          <Calendar
+          <DnDCalendar
             localizer={localizer}
             events={calendarEvents}
             startAccessor="start"
@@ -211,7 +255,7 @@ export function CalendarView({
             views={["month", "week", "day"]}
             components={{ event: CalendarEventContent }}
             eventPropGetter={(event) => {
-              const e = event.resource as CalendarEventWithRelations;
+              const e = event.resource;
               return {
                 style: {
                   backgroundColor: colorForAssignee(e.assignee_id),
@@ -219,9 +263,34 @@ export function CalendarView({
                 },
               };
             }}
+            onDoubleClickEvent={(event) => {
+              if (canEdit(event.resource)) setEditingEvent(event.resource);
+            }}
+            draggableAccessor={(event) => canEdit(event.resource)}
+            resizableAccessor={(event) => canEdit(event.resource)}
+            resizable
+            onEventDrop={handleEventDrop}
+            onEventResize={handleEventResize}
           />
         </div>
       </div>
+
+      {editingEvent && (
+        <EventForm
+          event={editingEvent}
+          clients={clients}
+          profiles={profiles}
+          defaultClientId={defaultClientId}
+          open={Boolean(editingEvent)}
+          onOpenChange={(v) => {
+            if (!v) setEditingEvent(null);
+          }}
+          onSuccess={(saved, removed) => {
+            upsertLocal(saved, removed);
+            setEditingEvent(null);
+          }}
+        />
+      )}
 
       <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>

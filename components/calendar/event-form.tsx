@@ -10,6 +10,7 @@ import { findConflicts, type ConflictingEvent } from "@/lib/calendar/conflicts";
 import { EVENT_TYPES } from "@/lib/calendar/constants";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -29,13 +30,13 @@ import {
 import { ConflictWarning } from "@/components/calendar/conflict-warning";
 
 const NONE = "__none__";
+const ONE_HOUR_MS = 60 * 60 * 1000;
 
 const eventSchema = z
   .object({
     title: z.string().min(1, "Title is required"),
     event_type: z.enum(["meeting", "shoot", "deadline", "deliverable", "other"]),
     client_id: z.string().optional(),
-    assignee_id: z.string().min(1, "Assignee is required"),
     starts_at: z.string().min(1, "Start time is required"),
     ends_at: z.string().min(1, "End time is required"),
   })
@@ -60,6 +61,8 @@ export function EventForm({
   defaultClientId,
   defaultAssigneeId,
   trigger,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
   onSuccess,
 }: {
   event?: Tables<"calendar_events">;
@@ -67,16 +70,32 @@ export function EventForm({
   profiles: Pick<Tables<"profiles">, "id" | "full_name">[];
   defaultClientId?: string;
   defaultAssigneeId?: string;
-  trigger: React.ReactNode;
-  onSuccess?: (event: Tables<"calendar_events">) => void;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  // savedRows: the group's current rows after the save. removedAssigneeRowIds:
+  // sibling rows deleted because that assignee was unchecked — the caller
+  // needs both to reconcile local state (upsert the former, drop the latter).
+  onSuccess?: (savedRows: Tables<"calendar_events">[], removedAssigneeRowIds: string[]) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = setControlledOpen ?? setInternalOpen;
   const [loading, setLoading] = useState(false);
   const [conflicts, setConflicts] = useState<ConflictingEvent[]>([]);
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(
+    event?.assignee_id ? [event.assignee_id] : defaultAssigneeId ? [defaultAssigneeId] : []
+  );
+  // The rest of the event's group — needed on save to know which rows to
+  // update in place, which to delete (assignee unchecked), and to exclude
+  // from conflict checks (a group's own rows always "overlap" themselves).
+  const [groupRows, setGroupRows] = useState<Tables<"calendar_events">[]>(event ? [event] : []);
   const {
     register,
     handleSubmit,
     control,
+    setValue,
+    reset,
     formState: { errors },
   } = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -84,32 +103,88 @@ export function EventForm({
       title: event?.title ?? "",
       event_type: event?.event_type ?? "other",
       client_id: event?.client_id ?? defaultClientId ?? undefined,
-      assignee_id: event?.assignee_id ?? defaultAssigneeId ?? "",
       starts_at: toDatetimeLocal(event?.starts_at ?? null),
       ends_at: toDatetimeLocal(event?.ends_at ?? null),
     },
   });
 
-  const assigneeId = useWatch({ control, name: "assignee_id" });
+  const eventType = useWatch({ control, name: "event_type" });
   const startsAt = useWatch({ control, name: "starts_at" });
   const endsAt = useWatch({ control, name: "ends_at" });
+
+  // Reset the form on open — mirrors TaskForm's own handleOpenChange.
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (!next) return;
+
+    reset({
+      title: event?.title ?? "",
+      event_type: event?.event_type ?? "other",
+      client_id: event?.client_id ?? defaultClientId ?? undefined,
+      starts_at: toDatetimeLocal(event?.starts_at ?? null),
+      ends_at: toDatetimeLocal(event?.ends_at ?? null),
+    });
+
+    if (event) {
+      setAssigneeIds([event.assignee_id]);
+      setGroupRows([event]);
+    } else {
+      setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
+      setGroupRows([]);
+    }
+  }
+
+  // Once open, fetch the rest of the event's group (its co-assignees) —
+  // mirrors TaskForm's own open-triggered refetch of task_assignees.
+  useEffect(() => {
+    if (!open || !event) return;
+    const supabase = createClient();
+    supabase
+      .from("calendar_events")
+      .select("*")
+      .eq("event_group_id", event.event_group_id)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setGroupRows(data);
+          setAssigneeIds(data.map((row) => row.assignee_id));
+        }
+      });
+  }, [open, event]);
+
+  // A meeting's end time defaults to an hour after its start — only fills
+  // in while empty, so it never clobbers a duration someone already set.
+  useEffect(() => {
+    if (eventType === "meeting" && startsAt && !endsAt) {
+      const start = new Date(startsAt);
+      if (!Number.isNaN(start.getTime())) {
+        setValue("ends_at", toDatetimeLocal(new Date(start.getTime() + ONE_HOUR_MS).toISOString()));
+      }
+    }
+  }, [eventType, startsAt, endsAt, setValue]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function check() {
-      const incomplete = !open || !assigneeId || !startsAt || !endsAt;
+      const incomplete = !open || assigneeIds.length === 0 || !startsAt || !endsAt;
       if (incomplete || new Date(endsAt) <= new Date(startsAt)) {
         if (!cancelled) setConflicts([]);
         return;
       }
-      const result = await findConflicts({
-        assigneeId,
-        startsAt: new Date(startsAt).toISOString(),
-        endsAt: new Date(endsAt).toISOString(),
-        excludeEventId: event?.id,
-      });
-      if (!cancelled) setConflicts(result);
+      const excludeEventIds = groupRows.map((r) => r.id);
+      const results = await Promise.all(
+        assigneeIds.map((assigneeId) =>
+          findConflicts({
+            assigneeId,
+            startsAt: new Date(startsAt).toISOString(),
+            endsAt: new Date(endsAt).toISOString(),
+            excludeEventIds,
+          })
+        )
+      );
+      const merged = new Map<string, ConflictingEvent>();
+      for (const list of results) for (const c of list) merged.set(c.id, c);
+      if (!cancelled) setConflicts(Array.from(merged.values()));
     }
 
     check();
@@ -117,40 +192,106 @@ export function EventForm({
     return () => {
       cancelled = true;
     };
-  }, [open, assigneeId, startsAt, endsAt, event?.id]);
+  }, [open, assigneeIds, startsAt, endsAt, groupRows]);
 
   async function onSubmit(values: EventFormValues) {
+    if (assigneeIds.length === 0) {
+      toast.error("Select at least one assignee");
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
 
-    const payload = {
+    const sharedPayload = {
       title: values.title,
       event_type: values.event_type,
       client_id: values.client_id || null,
-      assignee_id: values.assignee_id,
       starts_at: new Date(values.starts_at).toISOString(),
       ends_at: new Date(values.ends_at).toISOString(),
     };
 
-    const result = event
-      ? await supabase.from("calendar_events").update(payload).eq("id", event.id).select().single()
-      : await supabase.from("calendar_events").insert(payload).select().single();
+    if (!event) {
+      const eventGroupId = crypto.randomUUID();
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .insert(assigneeIds.map((assignee_id) => ({ ...sharedPayload, event_group_id: eventGroupId, assignee_id })))
+        .select();
+      setLoading(false);
 
-    setLoading(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
 
-    if (result.error) {
-      toast.error(result.error.message);
+      toast.success("Event created");
+      setOpen(false);
+      onSuccess?.(data ?? [], []);
       return;
     }
 
-    toast.success(event ? "Event updated" : "Event created");
+    const existingAssigneeIds = groupRows.map((r) => r.assignee_id);
+    const keptIds = existingAssigneeIds.filter((id) => assigneeIds.includes(id));
+    const removedRows = groupRows.filter((r) => !assigneeIds.includes(r.assignee_id));
+    const addedIds = assigneeIds.filter((id) => !existingAssigneeIds.includes(id));
+
+    const savedRows: Tables<"calendar_events">[] = [];
+
+    if (keptIds.length > 0) {
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .update(sharedPayload)
+        .eq("event_group_id", event.event_group_id)
+        .in("assignee_id", keptIds)
+        .select();
+      if (error) {
+        setLoading(false);
+        toast.error(error.message);
+        return;
+      }
+      savedRows.push(...(data ?? []));
+    }
+
+    if (removedRows.length > 0) {
+      const { error } = await supabase
+        .from("calendar_events")
+        .delete()
+        .in("id", removedRows.map((r) => r.id));
+      if (error) {
+        setLoading(false);
+        toast.error(error.message);
+        return;
+      }
+    }
+
+    if (addedIds.length > 0) {
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .insert(
+          addedIds.map((assignee_id) => ({
+            ...sharedPayload,
+            event_group_id: event.event_group_id,
+            assignee_id,
+          }))
+        )
+        .select();
+      if (error) {
+        setLoading(false);
+        toast.error(error.message);
+        return;
+      }
+      savedRows.push(...(data ?? []));
+    }
+
+    setLoading(false);
+    toast.success("Event updated");
     setOpen(false);
-    onSuccess?.(result.data);
+    onSuccess?.(savedRows, removedRows.map((r) => r.id));
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{event ? "Edit event" : "New event"}</DialogTitle>
@@ -214,27 +355,24 @@ export function EventForm({
           </div>
 
           <div className="space-y-2">
-            <Label>Assignee</Label>
-            <Controller
-              name="assignee_id"
-              control={control}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select assignee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.assignee_id && (
-              <p className="text-sm text-destructive">{errors.assignee_id.message}</p>
+            <Label>Assignees</Label>
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
+              {profiles.map((p) => (
+                <label key={p.id} className="flex items-center gap-2 py-0.5 text-sm">
+                  <Checkbox
+                    checked={assigneeIds.includes(p.id)}
+                    onCheckedChange={(checked) =>
+                      setAssigneeIds((prev) =>
+                        checked ? [...prev, p.id] : prev.filter((id) => id !== p.id)
+                      )
+                    }
+                  />
+                  {p.full_name}
+                </label>
+              ))}
+            </div>
+            {assigneeIds.length === 0 && (
+              <p className="text-xs text-destructive">Select at least one assignee</p>
             )}
           </div>
 

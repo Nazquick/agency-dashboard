@@ -59,6 +59,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           ends_at: string
+          event_group_id: string
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           source: Database["public"]["Enums"]["task_source"]
@@ -72,6 +73,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           ends_at: string
+          event_group_id?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           source?: Database["public"]["Enums"]["task_source"]
@@ -85,6 +87,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           ends_at?: string
+          event_group_id?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           source?: Database["public"]["Enums"]["task_source"]
@@ -1684,6 +1687,134 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whitelabel_invites: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          label: string | null
+          status: string
+          tenant_id: string | null
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          status?: string
+          tenant_id?: string | null
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          status?: string
+          tenant_id?: string | null
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whitelabel_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whitelabel_invites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whitelabel_tenants: {
+        Row: {
+          app_url: string | null
+          brand_primary_color: string | null
+          business_name: string
+          contact_email: string
+          contact_name: string | null
+          created_at: string
+          custom_domain: string | null
+          dyor_admin_seeded: boolean
+          id: string
+          invite_id: string | null
+          layout_variant: string
+          logo_url: string | null
+          notes: string | null
+          path_slug: string | null
+          status: string
+          supabase_anon_key: string
+          supabase_url: string
+          tenant_admin_seeded: boolean
+          updated_at: string
+          vercel_deploy_url: string | null
+        }
+        Insert: {
+          app_url?: string | null
+          brand_primary_color?: string | null
+          business_name: string
+          contact_email: string
+          contact_name?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          dyor_admin_seeded?: boolean
+          id?: string
+          invite_id?: string | null
+          layout_variant?: string
+          logo_url?: string | null
+          notes?: string | null
+          path_slug?: string | null
+          status?: string
+          supabase_anon_key: string
+          supabase_url: string
+          tenant_admin_seeded?: boolean
+          updated_at?: string
+          vercel_deploy_url?: string | null
+        }
+        Update: {
+          app_url?: string | null
+          brand_primary_color?: string | null
+          business_name?: string
+          contact_email?: string
+          contact_name?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          dyor_admin_seeded?: boolean
+          id?: string
+          invite_id?: string | null
+          layout_variant?: string
+          logo_url?: string | null
+          notes?: string | null
+          path_slug?: string | null
+          status?: string
+          supabase_anon_key?: string
+          supabase_url?: string
+          tenant_admin_seeded?: boolean
+          updated_at?: string
+          vercel_deploy_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whitelabel_tenants_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_invites"
             referencedColumns: ["id"]
           },
         ]

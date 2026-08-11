@@ -9,12 +9,12 @@ export async function findConflicts({
   assigneeId,
   startsAt,
   endsAt,
-  excludeEventId,
+  excludeEventIds,
 }: {
   assigneeId: string;
   startsAt: string;
   endsAt: string;
-  excludeEventId?: string;
+  excludeEventIds?: string[];
 }): Promise<ConflictingEvent[]> {
   const supabase = createClient();
 
@@ -25,8 +25,8 @@ export async function findConflicts({
     .lt("starts_at", endsAt)
     .gt("ends_at", startsAt);
 
-  if (excludeEventId) {
-    query = query.neq("id", excludeEventId);
+  if (excludeEventIds && excludeEventIds.length > 0) {
+    query = query.not("id", "in", `(${excludeEventIds.join(",")})`);
   }
 
   const { data } = await query;
