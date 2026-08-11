@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Layers } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
@@ -21,7 +20,6 @@ import {
   type TaskStatus,
 } from "@/lib/tasks/constants";
 import { TaskForm } from "@/components/pipeline/task-form";
-import { BatchTaskDialog } from "@/components/pipeline/batch-task-dialog";
 import { TaskColorDot } from "@/components/tasks/task-color-dot";
 import { taskColor, TASK_COLOR_LABEL } from "@/lib/tasks/color-code";
 import { flattenAssignees } from "@/lib/tasks/assignees";
@@ -77,35 +75,6 @@ function formatDeadline(value: string | null) {
   });
 }
 
-type RenderItem =
-  | { type: "single"; task: TaskWithRelations }
-  | { type: "group"; batchId: string; tasks: TaskWithRelations[] };
-
-// Tasks created together via "All {group}" bulk-create share a batch_id —
-// collapse those into one row in the pipeline view instead of listing
-// every location separately, as long as more than one sibling is still
-// visible after filtering (a lone survivor just renders like any other
-// task).
-function groupByBatch(list: TaskWithRelations[]): RenderItem[] {
-  const seen = new Set<string>();
-  const items: RenderItem[] = [];
-  for (const t of list) {
-    if (!t.batch_id) {
-      items.push({ type: "single", task: t });
-      continue;
-    }
-    if (seen.has(t.batch_id)) continue;
-    seen.add(t.batch_id);
-    const members = list.filter((x) => x.batch_id === t.batch_id);
-    if (members.length > 1) {
-      items.push({ type: "group", batchId: t.batch_id, tasks: members });
-    } else {
-      items.push({ type: "single", task: t });
-    }
-  }
-  return items;
-}
-
 export function PipelineBoard({
   initialTasks,
   clients,
@@ -130,7 +99,6 @@ export function PipelineBoard({
   const [showArchived, setShowArchived] = useState(false);
   const [assessingId, setAssessingId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
-  const [openBatchId, setOpenBatchId] = useState<string | null>(null);
 
   useEffect(() => {
     let supabase: SupabaseClient;
@@ -446,11 +414,7 @@ export function PipelineBoard({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  groupByBatch(activeTasks).map((item) =>
-                    item.type === "group"
-                      ? renderGroupRow(item.batchId, item.tasks)
-                      : renderRow(item.task)
-                  )
+                  activeTasks.map((task) => renderRow(task))
                 )}
               </TableBody>
             </Table>
@@ -476,11 +440,7 @@ export function PipelineBoard({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {groupByBatch(doneTasks).map((item) =>
-                      item.type === "group"
-                        ? renderGroupRow(item.batchId, item.tasks, { muted: true })
-                        : renderRow(item.task, { muted: true })
-                    )}
+                    {doneTasks.map((task) => renderRow(task, { muted: true }))}
                   </TableBody>
                 </Table>
               </div>
@@ -490,91 +450,6 @@ export function PipelineBoard({
       )}
     </div>
   );
-
-  // A group row summarizes the 9 underlying per-location tasks. Editing
-  // shared fields (title/description/deadline/priority) and uploading
-  // finished work happen here, applied to every location at once via
-  // BatchTaskDialog; per-location status still lives on that client's own
-  // pipeline page, since progress can differ location to location.
-  function renderGroupRow(
-    batchId: string,
-    groupTasks: TaskWithRelations[],
-    options?: { muted?: boolean }
-  ) {
-    const muted = options?.muted ?? false;
-    const first = groupTasks[0];
-    const clientGroupId = clients.find((c) => c.id === first.client_id)?.group_id;
-    const groupName = clientGroupId ? groups.find((g) => g.id === clientGroupId)?.name : undefined;
-    const label = groupName ? `${groupName} (ALL)` : "All locations";
-    const doneCount = groupTasks.filter((t) => t.status === "done").length;
-    const uniqueAssignees = Array.from(
-      new Map(groupTasks.flatMap((t) => t.assignees).map((a) => [a.id, a])).values()
-    );
-    const priorities = new Set(groupTasks.map((t) => t.priority));
-    const sharedPriority = priorities.size === 1 ? (first.priority as TaskPriority) : null;
-
-    return (
-      <TableRow key={`group-${batchId}`} className={cn("bg-muted/40", muted && "opacity-70")}>
-        <TableCell>
-          <span title={`Assigned to ${label}`}>
-            <Layers className="h-4 w-4 text-muted-foreground" aria-hidden />
-          </span>
-        </TableCell>
-        <TableCell className="font-medium">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setOpenBatchId(batchId)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setOpenBatchId(batchId);
-              }
-            }}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-muted/60"
-          >
-            {first.title}
-          </div>
-        </TableCell>
-        {showClientColumn && <TableCell className="text-muted-foreground">{label}</TableCell>}
-        <TableCell className="text-muted-foreground">
-          {uniqueAssignees.length > 0 ? uniqueAssignees.map((a) => a.full_name).join(", ") : "Unassigned"}
-        </TableCell>
-        <TableCell>
-          {sharedPriority ? (
-            <Badge className={PRIORITY_BADGE_CLASS[sharedPriority]}>{priorityLabel(sharedPriority)}</Badge>
-          ) : (
-            <Badge variant="secondary">Mixed</Badge>
-          )}
-        </TableCell>
-        <TableCell className="text-muted-foreground">
-          {doneCount}/{groupTasks.length} done
-        </TableCell>
-        <TableCell className="text-muted-foreground">{formatDeadline(first.deadline)}</TableCell>
-        <TableCell className="text-right">
-          <Button variant="outline" size="sm" onClick={() => setOpenBatchId(batchId)}>
-            Edit
-          </Button>
-        </TableCell>
-        {openBatchId === batchId && (
-          <BatchTaskDialog
-            tasks={groupTasks}
-            label={label}
-            open={openBatchId === batchId}
-            onOpenChange={(v) => setOpenBatchId(v ? batchId : null)}
-            onSuccess={(updated) =>
-              setTasks((prev) =>
-                prev.map((t) => {
-                  const match = updated.find((u) => u.id === t.id);
-                  return match ? { ...t, ...match } : t;
-                })
-              )
-            }
-          />
-        )}
-      </TableRow>
-    );
-  }
 
   function renderRow(task: TaskWithRelations, options?: { muted?: boolean; nested?: boolean }) {
     const muted = options?.muted ?? false;
@@ -630,7 +505,16 @@ export function PipelineBoard({
           </div>
         </TableCell>
         {showClientColumn && (
-          <TableCell className="text-muted-foreground">{task.client?.name ?? "—"}</TableCell>
+          <TableCell className="text-muted-foreground">
+            {task.client_group_id ? (
+              <div>
+                <div>{groups.find((g) => g.id === task.client_group_id)?.name ?? "Group"} (ALL)</div>
+                <div className="text-xs">{task.client?.name}</div>
+              </div>
+            ) : (
+              (task.client?.name ?? "—")
+            )}
+          </TableCell>
         )}
         <TableCell className="text-muted-foreground">
           {task.assignees.length > 0

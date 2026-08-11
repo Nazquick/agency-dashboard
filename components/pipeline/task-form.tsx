@@ -314,10 +314,10 @@ export function TaskForm({
 
     const groupId =
       !task && values.client_id?.startsWith(GROUP_PREFIX) ? values.client_id.slice(GROUP_PREFIX.length) : null;
-    const groupClients = groupId ? clients.filter((c) => c.group_id === groupId) : null;
+    const groupHasMembers = groupId ? clients.some((c) => c.group_id === groupId) : false;
 
-    if (groupClients && groupClients.length > 0) {
-      await submitForGroup(groupClients, values, deadlineIso);
+    if (groupId && groupHasMembers) {
+      await submitForGroup(groupId, values, deadlineIso);
       return;
     }
 
@@ -429,99 +429,103 @@ export function TaskForm({
     onSuccess?.(result.data, finalAssigneeIds);
   }
 
-  async function submitForGroup(
-    groupClients: Pick<Tables<"clients">, "id" | "name" | "group_id">[],
-    values: TaskFormValues,
-    deadlineIso: string | null
-  ) {
+  async function submitForGroup(groupId: string, values: TaskFormValues, deadlineIso: string | null) {
     setLoading(true);
     const supabase = createClient();
 
-    const batchId = crypto.randomUUID();
-    const basePayload = {
-      title: values.title,
-      description: values.description || null,
-      task_type: values.task_type || null,
-      deadline: deadlineIso,
-      priority: values.priority,
-      status: values.status,
-      batch_id: batchId,
-    };
-
-    const { data: insertedTasks, error } = await supabase
-      .from("tasks")
-      .insert(groupClients.map((c) => ({ ...basePayload, client_id: c.id, assignee_id: assigneeIds[0] ?? null })))
-      .select();
-
-    if (error || !insertedTasks) {
+    const pickRes = await fetch("/api/tasks/pick-group-client", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupId }),
+    });
+    const pickBody = await pickRes.json();
+    if (!pickRes.ok) {
       setLoading(false);
-      toast.error(error?.message ?? "Failed to create tasks");
+      toast.error(pickBody.error ?? "Failed to pick a location for this group");
       return;
     }
 
+    const payload = {
+      title: values.title,
+      description: values.description || null,
+      task_type: values.task_type || null,
+      client_id: pickBody.clientId as string,
+      client_group_id: groupId,
+      assignee_id: assigneeIds[0] ?? null,
+      deadline: deadlineIso,
+      priority: values.priority,
+      status: values.status,
+    };
+
+    const { data: insertedTask, error } = await supabase.from("tasks").insert(payload).select().single();
+
+    if (error || !insertedTask) {
+      setLoading(false);
+      toast.error(error?.message ?? "Failed to create task");
+      return;
+    }
+
+    const taskId = insertedTask.id;
     const validSteps = steps.filter((s) => s.description.trim().length > 0);
     if (validSteps.length > 0) {
       const { error: stepsError } = await supabase.from("task_steps").insert(
-        insertedTasks.flatMap((t) =>
-          validSteps.map((s, index) => ({
-            task_id: t.id,
-            position: index + 1,
-            description: s.description,
-            estimated_minutes: s.estimated_minutes ? Number(s.estimated_minutes) : null,
-            software: s.software || null,
-            equipment: s.equipment || null,
-            transportation: s.transportation || null,
-            other_cost: s.other_cost || null,
-          }))
-        )
+        validSteps.map((s, index) => ({
+          task_id: taskId,
+          position: index + 1,
+          description: s.description,
+          estimated_minutes: s.estimated_minutes ? Number(s.estimated_minutes) : null,
+          software: s.software || null,
+          equipment: s.equipment || null,
+          transportation: s.transportation || null,
+          other_cost: s.other_cost || null,
+        }))
       );
       if (stepsError) toast.error(`Steps not saved: ${stepsError.message}`);
     }
 
     let finalAssigneeIds = assigneeIds;
-    if (finalAssigneeIds.length === 0 && basePayload.priority !== "urgent") {
-      const assignee = await assessRole(basePayload.title, basePayload.description, basePayload.task_type);
+    if (finalAssigneeIds.length === 0 && payload.priority !== "urgent") {
+      const assignee = await assessRole(payload.title, payload.description, payload.task_type);
       if (assignee) {
         const { error: assignError } = await supabase
           .from("tasks")
           .update({ assignee_id: assignee.id })
-          .in(
-            "id",
-            insertedTasks.map((t) => t.id)
-          );
+          .eq("id", taskId);
         if (!assignError) {
-          toast.success(`AI assigned these tasks to ${assignee.full_name} (${roleLabel(assignee.role, roles)})`);
+          toast.success(`AI assigned this task to ${assignee.full_name} (${roleLabel(assignee.role, roles)})`);
           finalAssigneeIds = [assignee.id];
         }
       }
     }
 
     if (finalAssigneeIds.length > 0) {
-      const { error: assigneesError } = await supabase.from("task_assignees").insert(
-        insertedTasks.flatMap((t) => finalAssigneeIds.map((profileId) => ({ task_id: t.id, profile_id: profileId })))
-      );
+      const { error: assigneesError } = await supabase
+        .from("task_assignees")
+        .insert(finalAssigneeIds.map((profileId) => ({ task_id: taskId, profile_id: profileId })));
       if (assigneesError) toast.error(`Assignees not saved: ${assigneesError.message}`);
     }
 
     setLoading(false);
-    toast.success(`Created "${basePayload.title}" for all ${groupClients.length} locations`);
+    toast.success(
+      pickBody.allOverLimit
+        ? `Created "${payload.title}" — assigned to ${pickBody.clientName} (every location is over its credit limit this month)`
+        : `Created "${payload.title}" — assigned to ${pickBody.clientName}`
+    );
 
-    for (const t of insertedTasks) {
-      logActivity(supabase, {
-        actorId: profile.id,
-        action: "task_created",
-        summary: `Created task "${basePayload.title}" (all locations)`,
-        entityType: "task",
-        entityId: t.id,
-      });
-    }
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "task_created",
+      summary: `Created task "${payload.title}" for ${pickBody.groupName} (ALL) — assigned to ${pickBody.clientName}`,
+      entityType: "task",
+      entityId: taskId,
+    });
 
     setOpen(false);
     reset();
     setSteps([]);
     setTemplateId(NO_TEMPLATE);
     setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
-    onSuccess?.(insertedTasks[0], finalAssigneeIds);
+    onSuccess?.(insertedTask, finalAssigneeIds);
   }
 
   return (
@@ -609,7 +613,7 @@ export function TaskForm({
                           if (members.length === 0) return null;
                           return (
                             <SelectItem key={`group:${g.id}`} value={`${GROUP_PREFIX}${g.id}`}>
-                              All {g.name} ({members.length})
+                              {g.name} (ALL)
                             </SelectItem>
                           );
                         })}
@@ -624,7 +628,8 @@ export function TaskForm({
               />
               {watch("client_id")?.startsWith(GROUP_PREFIX) && (
                 <p className="text-xs text-muted-foreground">
-                  Creates the same task at every location in this group.
+                  Assigns this task to whichever location in this group has credit left, and
+                  shows it in the pipeline as a single &quot;(ALL)&quot; task.
                 </p>
               )}
             </div>

@@ -1419,6 +1419,7 @@ export type Database = {
           archived: boolean
           assignee_id: string | null
           batch_id: string | null
+          client_group_id: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -1448,6 +1449,7 @@ export type Database = {
           archived?: boolean
           assignee_id?: string | null
           batch_id?: string | null
+          client_group_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1477,6 +1479,7 @@ export type Database = {
           archived?: boolean
           assignee_id?: string | null
           batch_id?: string | null
+          client_group_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1506,6 +1509,13 @@ export type Database = {
             columns: ["assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_client_group_id_fkey"
+            columns: ["client_group_id"]
+            isOneToOne: false
+            referencedRelation: "client_groups"
             referencedColumns: ["id"]
           },
           {
@@ -1834,6 +1844,7 @@ export type Database = {
           archived: boolean
           assignee_id: string | null
           batch_id: string | null
+          client_group_id: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
