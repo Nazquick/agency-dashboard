@@ -9,6 +9,7 @@ import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
 import { ATTACHMENT_CATEGORIES, MAX_ATTACHMENT_BYTES } from "@/lib/tasks/constants";
+import { sanitizeStorageFilename } from "@/lib/storage/filename";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -109,7 +110,7 @@ export function TaskAttachments({ taskId, taskTitle }: { taskId: string; taskTit
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const storagePath = `${taskId}/${category}/${Date.now()}-${i}-${file.name}`;
+      const storagePath = `${taskId}/${category}/${Date.now()}-${i}-${sanitizeStorageFilename(file.name)}`;
 
       const { error: uploadError } = await supabase.storage
         .from("task-attachments")

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
+import { sanitizeStorageFilename } from "@/lib/storage/filename";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -43,7 +44,7 @@ export function ClientFileUploader({ clientId }: { clientId: string }) {
 
     setUploading(true);
     const supabase = createClient();
-    const storagePath = `${clientId}/${fileType}/${Date.now()}-${file.name}`;
+    const storagePath = `${clientId}/${fileType}/${Date.now()}-${sanitizeStorageFilename(file.name)}`;
 
     const { error: uploadError } = await supabase.storage
       .from("client-assets")

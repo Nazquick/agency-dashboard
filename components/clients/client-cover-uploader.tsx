@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
+import { sanitizeStorageFilename } from "@/lib/storage/filename";
 import { Button } from "@/components/ui/button";
 
 export function ClientCoverUploader({
@@ -34,7 +35,7 @@ export function ClientCoverUploader({
 
     setUploading(true);
     const supabase = createClient();
-    const storagePath = `${clientId}/cover/${Date.now()}-${file.name}`;
+    const storagePath = `${clientId}/cover/${Date.now()}-${sanitizeStorageFilename(file.name)}`;
 
     const { error: uploadError } = await supabase.storage
       .from("client-assets")
