@@ -68,6 +68,8 @@ export function ClientPipelineTable({
   );
   const [locationFilter, setLocationFilter] = useState<string>(ALL);
   const [selectedTask, setSelectedTask] = useState<PortalTask | null>(null);
+  const [sortMode, setSortMode] = useState<"deadline" | "recent">("deadline");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const showLocation = clients.length > 1;
 
   useEffect(() => {
@@ -127,19 +129,26 @@ export function ClientPipelineTable({
     const groups = {} as Record<TaskStatus, PortalTask[]>;
     for (const s of STATUSES) {
       const members = filtered.filter((t) => t.status === s.value);
-      members.sort((a, b) => {
-        if (s.value === "done") {
-          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-        }
-        if (!a.deadline && !b.deadline) return 0;
-        if (!a.deadline) return 1;
-        if (!b.deadline) return -1;
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-      });
+      if (sortMode === "recent") {
+        members.sort((a, b) => {
+          const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return sortDir === "desc" ? diff : -diff;
+        });
+      } else {
+        members.sort((a, b) => {
+          if (s.value === "done") {
+            return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+          }
+          if (!a.deadline && !b.deadline) return 0;
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        });
+      }
       groups[s.value] = members;
     }
     return groups;
-  }, [filtered]);
+  }, [filtered, sortMode, sortDir]);
 
   function toggleStatus(status: TaskStatus) {
     setVisibleStatuses((prev) => {
@@ -148,6 +157,15 @@ export function ClientPipelineTable({
       else next.add(status);
       return next;
     });
+  }
+
+  function handleRecentSortClick() {
+    if (sortMode !== "recent") {
+      setSortMode("recent");
+      setSortDir("desc");
+    } else {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    }
   }
 
   return (
@@ -192,6 +210,32 @@ export function ClientPipelineTable({
                 </button>
               );
             })}
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSortMode("deadline")}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                sortMode === "deadline"
+                  ? "border-transparent bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Deadline
+            </button>
+            <button
+              type="button"
+              onClick={handleRecentSortClick}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                sortMode === "recent"
+                  ? "border-transparent bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Recently added{sortMode === "recent" && (sortDir === "desc" ? " ↓" : " ↑")}
+            </button>
           </div>
         </div>
       </div>

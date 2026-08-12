@@ -99,6 +99,8 @@ export function PipelineBoard({
   const [priorityFilter, setPriorityFilter] = useState<string>(ALL);
   const [clientFilter, setClientFilter] = useState<string>(ALL);
   const [showArchived, setShowArchived] = useState(false);
+  const [sortMode, setSortMode] = useState<"priority" | "recent">("priority");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [assessingId, setAssessingId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
@@ -180,14 +182,21 @@ export function PipelineBoard({
   );
 
   // Grouped by status so every status can be seen at once (toggled via the
-  // chips below) instead of one flat list — within each group, sorted so
+  // chips below) instead of one flat list. Within each group: by default,
   // the most urgent tasks lead (nearest deadline breaking ties), except
-  // "done" which sorts by most-recently-completed first.
+  // "done" which sorts by most-recently-completed first — or, when
+  // sortMode is "recent", every group instead sorts by created_at, newest
+  // or oldest first per sortDir.
   const statusGroups = useMemo(() => {
     const groups = {} as Record<TaskStatus, TaskWithRelations[]>;
     for (const s of STATUSES) {
       const members = filtered.filter((t) => t.status === s.value);
-      if (s.value === "done") {
+      if (sortMode === "recent") {
+        members.sort((a, b) => {
+          const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return sortDir === "desc" ? diff : -diff;
+        });
+      } else if (s.value === "done") {
         members.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
       } else {
         members.sort((a, b) => {
@@ -203,7 +212,16 @@ export function PipelineBoard({
       groups[s.value] = members;
     }
     return groups;
-  }, [filtered]);
+  }, [filtered, sortMode, sortDir]);
+
+  function handleRecentSortClick() {
+    if (sortMode !== "recent") {
+      setSortMode("recent");
+      setSortDir("desc");
+    } else {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    }
+  }
 
   function toggleStatus(status: TaskStatus) {
     setVisibleStatuses((prev) => {
@@ -384,6 +402,33 @@ export function PipelineBoard({
               </SelectContent>
             </Select>
           )}
+
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSortMode("priority")}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                sortMode === "priority"
+                  ? "border-transparent bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Priority
+            </button>
+            <button
+              type="button"
+              onClick={handleRecentSortClick}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                sortMode === "recent"
+                  ? "border-transparent bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Recently added{sortMode === "recent" && (sortDir === "desc" ? " ↓" : " ↑")}
+            </button>
+          </div>
 
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <Checkbox
