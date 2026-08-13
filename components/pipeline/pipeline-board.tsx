@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -608,9 +609,14 @@ export function PipelineBoard({
           </TableCell>
         )}
         <TableCell className="text-muted-foreground">
-          {task.assignees.length > 0
-            ? task.assignees.map((a) => a.full_name).join(", ")
-            : "Unassigned"}
+          <div
+            className="max-w-[160px] truncate"
+            title={task.assignees.length > 0 ? task.assignees.map((a) => a.full_name).join(", ") : undefined}
+          >
+            {task.assignees.length > 0
+              ? task.assignees.map((a) => a.full_name).join(", ")
+              : "Unassigned"}
+          </div>
         </TableCell>
         <TableCell>
           <Badge className={PRIORITY_BADGE_CLASS[task.priority as TaskPriority]}>
@@ -636,10 +642,7 @@ export function PipelineBoard({
         </TableCell>
         <TableCell className="text-muted-foreground">{formatDeadline(task.deadline)}</TableCell>
         <TableCell className="text-right">
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setOpenTaskId(task.id)}>
-              Edit
-            </Button>
+          <div className="flex justify-end gap-1">
             <TaskForm
               task={task}
               clients={clients}
@@ -671,8 +674,13 @@ export function PipelineBoard({
               onDelete={(deletedId) => setTasks((prev) => prev.filter((t) => t.id !== deletedId))}
             />
             {leader && (
-              <Button variant="ghost" size="sm" onClick={() => handleDelete(task)}>
-                Delete
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => handleDelete(task)}
+                title="Delete task"
+              >
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>

@@ -310,8 +310,7 @@ export function TaskForm({
     // its deadline) should never be blocked by it.
     const deadlineIso = values.deadline ? new Date(values.deadline).toISOString() : null;
 
-    const groupId =
-      !task && values.client_id?.startsWith(GROUP_PREFIX) ? values.client_id.slice(GROUP_PREFIX.length) : null;
+    const groupId = values.client_id?.startsWith(GROUP_PREFIX) ? values.client_id.slice(GROUP_PREFIX.length) : null;
     const groupHasMembers = groupId ? clients.some((c) => c.group_id === groupId) : false;
 
     if (groupId && groupHasMembers) {
@@ -327,6 +326,7 @@ export function TaskForm({
       description: values.description || null,
       task_type: values.task_type || null,
       client_id: values.client_id || null,
+      client_group_id: null,
       assignee_id: assigneeIds[0] ?? null,
       deadline: deadlineIso,
       priority: values.priority,
@@ -455,16 +455,22 @@ export function TaskForm({
       status: values.status,
     };
 
-    const { data: insertedTask, error } = await supabase.from("tasks").insert(payload).select().single();
+    const result = task
+      ? await supabase.from("tasks").update(payload).eq("id", task.id).select().single()
+      : await supabase.from("tasks").insert(payload).select().single();
 
-    if (error || !insertedTask) {
+    if (result.error || !result.data) {
       setLoading(false);
-      toast.error(error?.message ?? "Failed to create task");
+      toast.error(result.error?.message ?? "Failed to save task");
       return;
     }
 
+    const insertedTask = result.data;
     const taskId = insertedTask.id;
     const validSteps = steps.filter((s) => s.description.trim().length > 0);
+    if (task) {
+      await supabase.from("task_steps").delete().eq("task_id", taskId);
+    }
     if (validSteps.length > 0) {
       const { error: stepsError } = await supabase.from("task_steps").insert(
         validSteps.map((s, index) => ({
@@ -482,7 +488,7 @@ export function TaskForm({
     }
 
     let finalAssigneeIds = assigneeIds;
-    if (finalAssigneeIds.length === 0 && payload.priority !== "urgent") {
+    if (!task && finalAssigneeIds.length === 0 && payload.priority !== "urgent") {
       const assignee = await assessRole(payload.title, payload.description, payload.task_type);
       if (assignee) {
         const { error: assignError } = await supabase
@@ -496,6 +502,9 @@ export function TaskForm({
       }
     }
 
+    if (task) {
+      await supabase.from("task_assignees").delete().eq("task_id", taskId);
+    }
     if (finalAssigneeIds.length > 0) {
       const { error: assigneesError } = await supabase
         .from("task_assignees")
@@ -505,24 +514,30 @@ export function TaskForm({
 
     setLoading(false);
     toast.success(
-      pickBody.allOverLimit
-        ? `Created "${payload.title}" — assigned to ${pickBody.clientName} (every location is over its credit limit this month)`
-        : `Created "${payload.title}" — assigned to ${pickBody.clientName}`
+      task
+        ? `Updated "${payload.title}" — assigned to ${pickBody.clientName}`
+        : pickBody.allOverLimit
+          ? `Created "${payload.title}" — assigned to ${pickBody.clientName} (every location is over its credit limit this month)`
+          : `Created "${payload.title}" — assigned to ${pickBody.clientName}`
     );
 
     logActivity(supabase, {
       actorId: profile.id,
-      action: "task_created",
-      summary: `Created task "${payload.title}" for ${pickBody.groupName} (ALL) — assigned to ${pickBody.clientName}`,
+      action: task ? "task_updated" : "task_created",
+      summary: task
+        ? `Updated task "${payload.title}" — reassigned to ${pickBody.groupName} (ALL), now at ${pickBody.clientName}`
+        : `Created task "${payload.title}" for ${pickBody.groupName} (ALL) — assigned to ${pickBody.clientName}`,
       entityType: "task",
       entityId: taskId,
     });
 
     setOpen(false);
-    reset();
-    setSteps([]);
-    setTemplateId(NO_TEMPLATE);
-    setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
+    if (!task) {
+      reset();
+      setSteps([]);
+      setTemplateId(NO_TEMPLATE);
+      setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
+    }
     onSuccess?.(insertedTask, finalAssigneeIds);
   }
 
@@ -604,8 +619,7 @@ export function TaskForm({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>No client (internal)</SelectItem>
-                      {!task &&
-                        !defaultClientId &&
+                      {!defaultClientId &&
                         groups.map((g) => {
                           const members = clients.filter((c) => c.group_id === g.id);
                           if (members.length === 0) return null;
