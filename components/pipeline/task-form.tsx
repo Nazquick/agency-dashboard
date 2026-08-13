@@ -11,7 +11,6 @@ import { useUser, useRoles, useGroups } from "@/components/providers/user-provid
 import { isTeamLeader, roleLabel } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
 import { CONTENT_TYPES, PRIORITIES, STATUSES } from "@/lib/tasks/constants";
-import { leadTimeViolation } from "@/lib/tasks/lead-time";
 import type { Tables } from "@/lib/types/database.types";
 import { TaskAttachments } from "@/components/tasks/task-attachments";
 import { Button } from "@/components/ui/button";
@@ -305,12 +304,11 @@ export function TaskForm({
   }
 
   async function onSubmit(values: TaskFormValues) {
+    // The minimum-notice lead-time lock only applies to clients requesting
+    // work through the portal (request-task-form.tsx) — staff editing a
+    // task here (e.g. just attaching a file to something already close to
+    // its deadline) should never be blocked by it.
     const deadlineIso = values.deadline ? new Date(values.deadline).toISOString() : null;
-    const violation = leadTimeViolation(values.task_type, deadlineIso, Boolean(values.client_id));
-    if (violation) {
-      toast.error(violation);
-      return;
-    }
 
     const groupId =
       !task && values.client_id?.startsWith(GROUP_PREFIX) ? values.client_id.slice(GROUP_PREFIX.length) : null;

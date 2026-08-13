@@ -103,6 +103,8 @@ export function PipelineBoard({
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [assessingId, setAssessingId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [tasksWithFiles, setTasksWithFiles] = useState<Set<string>>(new Set());
+  const [showFilesOnly, setShowFilesOnly] = useState(false);
 
   useEffect(() => {
     let supabase: SupabaseClient;
@@ -123,14 +125,22 @@ export function PipelineBoard({
       if (data) setTasks(flattenAssignees(data));
     }
 
+    async function refetchFileTaskIds() {
+      const { data } = await supabase.from("task_attachments").select("task_id");
+      if (data) setTasksWithFiles(new Set(data.map((row) => row.task_id)));
+    }
+
     async function setup() {
       supabase = await createRealtimeClient();
       if (cancelled) return;
+
+      await refetchFileTaskIds();
 
       channel = supabase
         .channel(`tasks-board-${defaultClientId ?? "all"}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "task_assignees" }, refetch)
+        .on("postgres_changes", { event: "*", schema: "public", table: "task_attachments" }, refetchFileTaskIds)
         .subscribe();
     }
 
@@ -165,9 +175,20 @@ export function PipelineBoard({
           return false;
         }
       }
+      if (showFilesOnly && !tasksWithFiles.has(t.id)) return false;
       return true;
     });
-  }, [tasks, clients, assigneeFilter, priorityFilter, clientFilter, showArchived, profile.id]);
+  }, [
+    tasks,
+    clients,
+    assigneeFilter,
+    priorityFilter,
+    clientFilter,
+    showArchived,
+    showFilesOnly,
+    tasksWithFiles,
+    profile.id,
+  ]);
 
   const statusCounts = useMemo(() => {
     const counts = {} as Record<TaskStatus, number>;
@@ -427,6 +448,18 @@ export function PipelineBoard({
               )}
             >
               Recently added{sortMode === "recent" && (sortDir === "desc" ? " ↓" : " ↑")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFilesOnly((v) => !v)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                showFilesOnly
+                  ? "border-transparent bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Files
             </button>
           </div>
 
