@@ -17,7 +17,15 @@ const OVERAGE_CHARGE = 3000;
 
 type QuotaTask = Pick<
   Tables<"tasks">,
-  "id" | "title" | "client_id" | "created_at" | "status" | "overage_charged" | "task_type" | "archived"
+  | "id"
+  | "title"
+  | "client_id"
+  | "credit_client_id"
+  | "created_at"
+  | "status"
+  | "overage_charged"
+  | "task_type"
+  | "archived"
 >;
 type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit">;
 type QuotaTopup = Pick<Tables<"credit_topups">, "client_id" | "period_start" | "credits_added">;
@@ -63,7 +71,9 @@ export function ClientQuotaPanel({
       const [{ data: taskRows }, { data: topupRows }] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, client_id, created_at, status, overage_charged, task_type, archived"),
+          .select(
+            "id, title, client_id, credit_client_id, created_at, status, overage_charged, task_type, archived"
+          ),
         supabase.from("credit_topups").select("client_id, period_start, credits_added"),
       ]);
       if (taskRows) setTasks(taskRows);
@@ -134,7 +144,7 @@ export function ClientQuotaPanel({
   return (
     <div className="space-y-6">
       {overClients.map(({ client, used, limit }) => {
-        const clientTasks = tasks.filter((t) => t.client_id === client.id);
+        const clientTasks = tasks.filter((t) => (t.credit_client_id ?? t.client_id) === client.id);
         const overageIds = overageTaskIds(clientTasks, limit, monthStart);
         const overageTasks = clientTasks
           .filter((t) => overageIds.has(t.id))

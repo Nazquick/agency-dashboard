@@ -16,6 +16,7 @@ type AssigneeSummary = { id: string; full_name: string; role: Tables<"profiles">
 export function flattenAssignees(
   rows: (Tables<"tasks"> & {
     client: { id: string; name: string } | null;
+    credit_client: { id: string; name: string } | null;
     assignee: AssigneeSummary | null;
     task_assignees?: { profile: AssigneeSummary | null }[] | null;
   })[]

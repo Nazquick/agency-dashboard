@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/build-tenant-schema.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate:tenant-schema": "node scripts/build-tenant-schema.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.1",

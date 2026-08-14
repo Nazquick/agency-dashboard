@@ -22,6 +22,16 @@
 
 drop function public.current_role() cascade;
 
+-- profiles_update_own_or_leader (0001) inlines its own role check rather
+-- than calling current_role(), so the CASCADE above doesn't touch it —
+-- but it still directly depends on profiles.role's type, and blocks the
+-- column type change below unless dropped first. (Discovered replaying
+-- this migration against a fresh database while building the white-label
+-- onboarding feature — production already carries the fixed, text-typed
+-- version of this policy from when this gap was patched live and never
+-- saved back to this file.)
+drop policy "profiles_update_own_or_leader" on public.profiles;
+
 alter table public.profiles alter column role type text using role::text;
 alter table public.role_change_requests alter column requested_role type text using requested_role::text;
 
@@ -182,6 +192,11 @@ create policy "client_reports_select_authenticated" on public.client_reports
 
 create policy "profiles_select_authenticated" on public.profiles
   for select using (public.current_role() <> 'client' or id = auth.uid());
+
+create policy "profiles_update_own_or_leader" on public.profiles
+  for update using (
+    auth.uid() = id or public.current_role() = 'team_leader'
+  );
 
 create policy "client_baselines_select_leader" on public.client_baselines
   for select using (public.current_role() = 'team_leader');

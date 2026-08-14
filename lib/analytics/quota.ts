@@ -15,7 +15,7 @@ export interface ClientCreditStatus {
 // numbers can't drift apart. A null monthly_credit_limit means unlimited.
 export function computeCreditStatus(
   clients: Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit">[],
-  tasks: Pick<Tables<"tasks">, "client_id" | "created_at" | "task_type" | "archived">[],
+  tasks: Pick<Tables<"tasks">, "client_id" | "credit_client_id" | "created_at" | "task_type" | "archived">[],
   topups: Pick<Tables<"credit_topups">, "client_id" | "period_start" | "credits_added">[]
 ): ClientCreditStatus[] {
   const periodStart = currentPeriodStart();

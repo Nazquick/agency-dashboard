@@ -37,7 +37,7 @@ export default async function TeamPage() {
     supabase
       .from("tasks")
       .select(
-        "id, title, priority, deadline, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
+        "id, title, priority, deadline, client:clients!tasks_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
       )
       .eq("archived", false)
       .neq("status", "done"),

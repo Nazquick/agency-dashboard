@@ -90,11 +90,11 @@ export function currentPeriodStart(): string {
 }
 
 export function creditsUsedInMonth(
-  tasks: Pick<Tables<"tasks">, "client_id" | "created_at" | "task_type" | "archived">[],
+  tasks: Pick<Tables<"tasks">, "client_id" | "credit_client_id" | "created_at" | "task_type" | "archived">[],
   clientId: string
 ): number {
   const start = startOfCurrentMonthIso();
   return tasks
-    .filter((t) => t.client_id === clientId && t.created_at >= start && !t.archived)
+    .filter((t) => (t.credit_client_id ?? t.client_id) === clientId && t.created_at >= start && !t.archived)
     .reduce((sum, t) => sum + creditsFor(t.task_type), 0);
 }

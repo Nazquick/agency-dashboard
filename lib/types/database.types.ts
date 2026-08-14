@@ -325,24 +325,34 @@ export type Database = {
       }
       client_groups: {
         Row: {
+          all_client_id: string | null
           created_at: string
           created_by: string | null
           id: string
           name: string
         }
         Insert: {
+          all_client_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           name: string
         }
         Update: {
+          all_client_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_groups_all_client_id_fkey"
+            columns: ["all_client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_groups_created_by_fkey"
             columns: ["created_by"]
@@ -614,6 +624,7 @@ export type Database = {
           description: string | null
           group_id: string | null
           id: string
+          is_group_all: boolean
           monthly_credit_limit: number | null
           monthly_fee: number | null
           name: string
@@ -626,6 +637,7 @@ export type Database = {
           description?: string | null
           group_id?: string | null
           id?: string
+          is_group_all?: boolean
           monthly_credit_limit?: number | null
           monthly_fee?: number | null
           name: string
@@ -638,6 +650,7 @@ export type Database = {
           description?: string | null
           group_id?: string | null
           id?: string
+          is_group_all?: boolean
           monthly_credit_limit?: number | null
           monthly_fee?: number | null
           name?: string
@@ -1419,10 +1432,10 @@ export type Database = {
           archived: boolean
           assignee_id: string | null
           batch_id: string | null
-          client_group_id: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
+          credit_client_id: string | null
           deadline: string | null
           description: string | null
           id: string
@@ -1449,10 +1462,10 @@ export type Database = {
           archived?: boolean
           assignee_id?: string | null
           batch_id?: string | null
-          client_group_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
+          credit_client_id?: string | null
           deadline?: string | null
           description?: string | null
           id?: string
@@ -1479,10 +1492,10 @@ export type Database = {
           archived?: boolean
           assignee_id?: string | null
           batch_id?: string | null
-          client_group_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
+          credit_client_id?: string | null
           deadline?: string | null
           description?: string | null
           id?: string
@@ -1512,13 +1525,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_client_group_id_fkey"
-            columns: ["client_group_id"]
-            isOneToOne: false
-            referencedRelation: "client_groups"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "tasks_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -1530,6 +1536,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_credit_client_id_fkey"
+            columns: ["credit_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
@@ -1844,10 +1857,10 @@ export type Database = {
           archived: boolean
           assignee_id: string | null
           batch_id: string | null
-          client_group_id: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
+          credit_client_id: string | null
           deadline: string | null
           description: string | null
           id: string

@@ -54,8 +54,8 @@ export async function POST(request: Request) {
 
   const { data: tasks } = await admin
     .from("tasks")
-    .select("client_id, created_at, task_type, archived")
-    .in("client_id", memberIds)
+    .select("client_id, credit_client_id, created_at, task_type, archived")
+    .or(`client_id.in.(${memberIds.join(",")}),credit_client_id.in.(${memberIds.join(",")})`)
     .gte("created_at", monthStart);
 
   const periodStart = currentPeriodStart();

@@ -6,12 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser, useRoles } from "@/components/providers/user-provider";
-import { PipelineBadge } from "@/components/nav/pipeline-badge";
-import { AdminQuotaBadge } from "@/components/nav/admin-quota-badge";
-import { QuestionsBadge } from "@/components/nav/questions-badge";
-import { BountiesBadge } from "@/components/nav/bounties-badge";
+import { NavBadge } from "@/components/nav/nav-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { DyorWordmark } from "@/components/branding/dyor-wordmark";
+import { BrandLogo } from "@/components/branding/brand-logo";
 import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
 import { isMasterKeyUser, roleLabel } from "@/lib/auth/roles";
 import { colorForId } from "@/lib/colors";
@@ -26,18 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-
-const BASE_TABS = [
-  { href: "/clients", label: "Clients" },
-  { href: "/pipeline", label: "Action Pipeline" },
-  { href: "/bounties", label: "Bounties" },
-  { href: "/calendar", label: "Calendar" },
-  { href: "/questions", label: "Questions" },
-  { href: "/team", label: "Team" },
-  { href: "/analytics", label: "Analytics" },
-];
-
-const ADMIN_TAB = { href: "/admin", label: "Admin" };
+import { BASE_TABS, ADMIN_TAB } from "@/lib/nav/items";
 
 function initials(name: string) {
   return name
@@ -87,7 +73,7 @@ export function TopTabs() {
             {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </Button>
           <div className="flex flex-col leading-none">
-            <DyorWordmark size="md" animated />
+            <BrandLogo size="md" animated />
             <span className="mt-1 text-[8px] font-medium uppercase tracking-normal text-muted-foreground">
               Agency Dashboard
             </span>
@@ -107,10 +93,7 @@ export function TopTabs() {
                   )}
                 >
                   {tab.label}
-                  {tab.href === "/pipeline" && <PipelineBadge />}
-                  {tab.href === "/bounties" && <BountiesBadge />}
-                  {tab.href === "/questions" && <QuestionsBadge />}
-                  {tab.href === "/admin" && <AdminQuotaBadge />}
+                  <NavBadge href={tab.href} />
                 </Link>
               );
             })}
@@ -166,10 +149,7 @@ export function TopTabs() {
                   )}
                 >
                   {tab.label}
-                  {tab.href === "/pipeline" && <PipelineBadge />}
-                  {tab.href === "/bounties" && <BountiesBadge />}
-                  {tab.href === "/questions" && <QuestionsBadge />}
-                  {tab.href === "/admin" && <AdminQuotaBadge />}
+                  <NavBadge href={tab.href} />
                 </Link>
               );
             })}

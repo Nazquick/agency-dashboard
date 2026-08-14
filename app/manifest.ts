@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
+import { BRAND_NAME } from "@/lib/branding/config";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "DYOR — Agency Dashboard",
-    short_name: "DYOR",
+    name: `${BRAND_NAME} — Agency Dashboard`,
+    short_name: BRAND_NAME,
     description: "Internal workflow dashboard for the team",
-    start_url: "/clients",
+    start_url: "/today",
     display: "standalone",
     background_color: "#0a0b10",
     theme_color: "#0a0b10",

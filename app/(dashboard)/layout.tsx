@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { UserProvider, RolesProvider, GroupsProvider } from "@/components/providers/user-provider";
 import { SessionHeartbeat } from "@/components/providers/session-heartbeat";
-import { TopTabs } from "@/components/nav/top-tabs";
+import { DashboardShell } from "@/components/nav/dashboard-shell";
 import { PushNotificationsManager } from "@/components/push/push-notifications-manager";
 
 export default async function DashboardLayout({
@@ -23,7 +23,7 @@ export default async function DashboardLayout({
   const [{ data: profile }, { data: roles }, { data: groups }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("roles").select("value, label").order("label"),
-    supabase.from("client_groups").select("id, name").order("name"),
+    supabase.from("client_groups").select("id, name, all_client_id").order("name"),
   ]);
 
   if (!profile) {
@@ -38,12 +38,9 @@ export default async function DashboardLayout({
     <UserProvider profile={profile}>
       <RolesProvider roles={roles ?? []}>
         <GroupsProvider groups={groups ?? []}>
-          <div className="min-h-screen bg-muted/40">
-            <SessionHeartbeat userId={profile.id} />
-            <PushNotificationsManager />
-            <TopTabs />
-            <main className="mx-auto max-w-7xl p-4 sm:p-6">{children}</main>
-          </div>
+          <SessionHeartbeat userId={profile.id} />
+          <PushNotificationsManager />
+          <DashboardShell>{children}</DashboardShell>
         </GroupsProvider>
       </RolesProvider>
     </UserProvider>

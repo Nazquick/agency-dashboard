@@ -53,6 +53,7 @@ type AssigneeSummary = { id: string; full_name: string; role: Tables<"profiles">
 
 export type TaskWithRelations = Tables<"tasks"> & {
   client: { id: string; name: string } | null;
+  credit_client: { id: string; name: string } | null;
   assignee: AssigneeSummary | null;
   assignees: AssigneeSummary[];
 };
@@ -116,7 +117,7 @@ export function PipelineBoard({
       let query = supabase
         .from("tasks")
         .select(
-          "*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
+          "*, client:clients!tasks_client_id_fkey(id, name), credit_client:clients!tasks_credit_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
         )
         .order("created_at", { ascending: false });
       if (defaultClientId) {
@@ -170,8 +171,11 @@ export function PipelineBoard({
       if (clientFilter !== ALL) {
         if (clientFilter.startsWith(GROUP_PREFIX)) {
           const groupId = clientFilter.slice(GROUP_PREFIX.length);
+          const group = groups.find((g) => g.id === groupId);
           const client = clients.find((c) => c.id === t.client_id);
-          if (!client || client.group_id !== groupId) return false;
+          const isMember = client?.group_id === groupId;
+          const isAllClient = group?.all_client_id === t.client_id;
+          if (!isMember && !isAllClient) return false;
         } else if (t.client_id !== clientFilter) {
           return false;
         }
@@ -182,6 +186,7 @@ export function PipelineBoard({
   }, [
     tasks,
     clients,
+    groups,
     assigneeFilter,
     priorityFilter,
     clientFilter,
@@ -483,6 +488,7 @@ export function PipelineBoard({
               {
                 ...task,
                 client: clients.find((c) => c.id === task.client_id) ?? null,
+                credit_client: clients.find((c) => c.id === task.credit_client_id) ?? null,
                 assignee: profiles.find((p) => p.id === task.assignee_id)
                   ? {
                       id: task.assignee_id!,
@@ -598,10 +604,10 @@ export function PipelineBoard({
         </TableCell>
         {showClientColumn && (
           <TableCell className="text-muted-foreground">
-            {task.client_group_id ? (
+            {task.credit_client ? (
               <div>
-                <div>{groups.find((g) => g.id === task.client_group_id)?.name ?? "Group"} (ALL)</div>
-                <div className="text-xs">{task.client?.name}</div>
+                <div>{task.client?.name ?? "—"}</div>
+                <div className="text-xs">Credit: {task.credit_client.name}</div>
               </div>
             ) : (
               (task.client?.name ?? "—")
@@ -657,6 +663,7 @@ export function PipelineBoard({
                       ? {
                           ...updated,
                           client: clients.find((c) => c.id === updated.client_id) ?? null,
+                          credit_client: clients.find((c) => c.id === updated.credit_client_id) ?? null,
                           assignee: profiles.find((p) => p.id === updated.assignee_id)
                             ? {
                                 id: updated.assignee_id!,

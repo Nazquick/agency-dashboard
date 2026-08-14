@@ -296,3 +296,32 @@
     padding: 0 1px;
   }
 }
+
+/* Layout-variant overrides (white-label onboarding, lib/branding/config.ts).
+   Scoped under the data-* attributes DashboardShell sets on its root — a
+   tenant on the "top-nav" default gets neither attribute, so none of this
+   applies and DYOR's own production styling is untouched. */
+[data-density="compact"] {
+  font-size: 0.925rem;
+}
+[data-density="compact"] table td,
+[data-density="compact"] table th {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+[data-density="compact"] .rounded-lg,
+[data-density="compact"] .rounded-xl {
+  border-radius: 0.375rem;
+}
+
+[data-theme-variant="minimal"] {
+  --border: oklch(0.9 0 0);
+  --ring: oklch(0.72 0 0);
+}
+.dark [data-theme-variant="minimal"] {
+  --border: oklch(1 0 0 / 8%);
+  --ring: oklch(0.45 0 0);
+}
+[data-theme-variant="minimal"] * {
+  box-shadow: none !important;
+}

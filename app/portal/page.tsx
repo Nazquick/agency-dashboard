@@ -28,26 +28,33 @@ export default async function PortalPipelinePage() {
   const [{ data: tasks }, { data: clients }, { data: topups }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("*, client:clients(id, name)")
+      .select("*, client:clients!tasks_client_id_fkey(id, name)")
       .order("created_at", { ascending: false }),
-    supabase.from("clients").select("id, name, monthly_credit_limit, monthly_fee").order("name"),
+    supabase
+      .from("clients")
+      .select("id, name, monthly_credit_limit, monthly_fee, is_group_all")
+      .order("name"),
     supabase.from("credit_topups").select("client_id, credits_added").eq("period_start", currentPeriodStart()),
   ]);
 
   const accessibleClients = clients ?? [];
+  // The group's own "(ALL)" pseudo client never carries its own credit —
+  // it borrows a real location's budget (tasks.credit_client_id) — so it
+  // gets its own row in the combined pipeline below but no credit panel.
+  const realLocations = accessibleClients.filter((c) => !c.is_group_all);
   const allTasks = (tasks ?? []) as unknown as PortalTask[];
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {accessibleClients.map((client) => (
+        {realLocations.map((client) => (
           <CreditStatusPanel
             key={client.id}
             clientId={client.id}
-            clientName={accessibleClients.length > 1 ? client.name : undefined}
+            clientName={realLocations.length > 1 ? client.name : undefined}
             monthlyCreditLimit={client.monthly_credit_limit}
             monthlyFee={client.monthly_fee}
-            tasks={allTasks.filter((t) => t.client_id === client.id)}
+            tasks={allTasks.filter((t) => (t.credit_client_id ?? t.client_id) === client.id)}
             initialTopup={(topups ?? []).find((t) => t.client_id === client.id) ?? null}
           />
         ))}

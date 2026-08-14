@@ -75,7 +75,7 @@ export function BountiesBoard({
       const { data } = await supabase
         .from("tasks")
         .select(
-          "*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name)"
+          "*, client:clients!tasks_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name)"
         )
         .eq("is_special", true)
         .eq("archived", false)

@@ -12,6 +12,8 @@ import { ClientGroupsPanel } from "@/components/admin/client-groups-panel";
 import { ClientCredentialsPanel } from "@/components/admin/client-credentials-panel";
 import { AddMemberDialog } from "@/components/team/add-member-dialog";
 import { AdSpendStrategyDownload } from "@/components/admin/ad-spend-strategy-download";
+import { WhitelabelInviteDialog } from "@/components/admin/whitelabel-invite-dialog";
+import { WhitelabelTenantsPanel } from "@/components/admin/whitelabel-tenants-panel";
 import type { WorkloadTask } from "@/components/team/workload-kanban";
 import type { Tables } from "@/lib/types/database.types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +24,15 @@ type ClientLoginProfile = Pick<Tables<"profiles">, "id" | "full_name" | "client_
 type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit">;
 type QuotaTask = Pick<
   Tables<"tasks">,
-  "id" | "title" | "client_id" | "created_at" | "status" | "overage_charged" | "task_type" | "archived"
+  | "id"
+  | "title"
+  | "client_id"
+  | "credit_client_id"
+  | "created_at"
+  | "status"
+  | "overage_charged"
+  | "task_type"
+  | "archived"
 >;
 type QuotaTopup = Pick<Tables<"credit_topups">, "client_id" | "period_start" | "credits_added">;
 
@@ -36,6 +46,7 @@ const SECTIONS = [
   { key: "client-credentials", title: "Logins and passwords", description: "Every client's platform logins in one place." },
   { key: "email-clients", title: "Email all clients", description: "Send a one-off message to every client's primary contact." },
   { key: "email-members", title: "Email all members", description: "Send a one-off message to the whole team." },
+  { key: "whitelabel-tenants", title: "White-label tenants", description: "Every dashboard you've handed out, and its status." },
 ] as const;
 
 type SectionKey = (typeof SECTIONS)[number]["key"];
@@ -54,6 +65,8 @@ export function AdminGrid({
   initialSessions,
   initialActivity,
   initialCredentials,
+  whitelabelTenants,
+  whitelabelInvites,
 }: {
   clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   quotaClients: QuotaClient[];
@@ -68,6 +81,8 @@ export function AdminGrid({
   initialSessions: Tables<"user_sessions">[];
   initialActivity: Tables<"activity_log">[];
   initialCredentials: Tables<"client_credentials">[];
+  whitelabelTenants: Tables<"whitelabel_tenants">[];
+  whitelabelInvites: Tables<"whitelabel_invites">[];
 }) {
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
 
@@ -113,6 +128,8 @@ export function AdminGrid({
         return <EmailBroadcastDialog audience="clients" />;
       case "email-members":
         return <EmailBroadcastDialog audience="members" />;
+      case "whitelabel-tenants":
+        return <WhitelabelTenantsPanel tenants={whitelabelTenants} invites={whitelabelInvites} />;
     }
   }
 
@@ -159,6 +176,20 @@ export function AdminGrid({
             </div>
             <div className="mt-auto">
               <AddMemberDialog />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex h-full flex-col gap-3 p-4">
+            <div>
+              <h3 className="text-sm font-semibold">White-label invite</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Generate a link that lets a business set up their own branded dashboard.
+              </p>
+            </div>
+            <div className="mt-auto">
+              <WhitelabelInviteDialog />
             </div>
           </CardContent>
         </Card>

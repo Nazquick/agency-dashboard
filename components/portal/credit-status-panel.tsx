@@ -27,7 +27,7 @@ export function CreditStatusPanel({
   clientName?: string;
   monthlyCreditLimit: number | null;
   monthlyFee: number | null;
-  tasks: Pick<Tables<"tasks">, "client_id" | "created_at" | "task_type" | "archived">[];
+  tasks: Pick<Tables<"tasks">, "client_id" | "credit_client_id" | "created_at" | "task_type" | "archived">[];
   initialTopup: Pick<Tables<"credit_topups">, "credits_added"> | null;
 }) {
   const [topup, setTopup] = useState(initialTopup);

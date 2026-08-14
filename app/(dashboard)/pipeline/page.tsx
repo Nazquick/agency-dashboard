@@ -9,7 +9,7 @@ export default async function PipelinePage() {
     supabase
       .from("tasks")
       .select(
-        "*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
+        "*, client:clients!tasks_client_id_fkey(id, name), credit_client:clients!tasks_credit_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
       )
       .order("created_at", { ascending: false }),
     supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),

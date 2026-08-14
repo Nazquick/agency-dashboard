@@ -11,6 +11,7 @@ export default async function ClientsPage() {
       .from("clients")
       .select("id, name, description, archived, cover_image_path")
       .eq("archived", false)
+      .eq("is_group_all", false)
       .order("name"),
     supabase.from("tasks").select("client_id").neq("status", "done").eq("archived", false),
   ]);

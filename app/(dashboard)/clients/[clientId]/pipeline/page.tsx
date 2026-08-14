@@ -14,7 +14,7 @@ export default async function ClientPipelinePage({
     supabase
       .from("tasks")
       .select(
-        "*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
+        "*, client:clients!tasks_client_id_fkey(id, name), credit_client:clients!tasks_credit_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
       )
       .eq("client_id", clientId)
       .order("created_at", { ascending: false }),

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Syne } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { BRAND_NAME, BRAND_PRIMARY_COLOR } from "@/lib/branding/config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,11 +22,11 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = {
-  title: "DYOR",
+  title: BRAND_NAME,
   description: "Internal workflow dashboard for the team",
   appleWebApp: {
     capable: true,
-    title: "DYOR",
+    title: BRAND_NAME,
     statusBarStyle: "black-translucent",
   },
 };
@@ -49,6 +50,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        {BRAND_PRIMARY_COLOR && (
+          <style>{`:root, .dark { --primary: ${BRAND_PRIMARY_COLOR}; --ring: ${BRAND_PRIMARY_COLOR}; }`}</style>
+        )}
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
           <Toaster />

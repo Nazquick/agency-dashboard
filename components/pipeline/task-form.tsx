@@ -35,7 +35,6 @@ import {
 
 const NONE = "__none__";
 const NO_TEMPLATE = "__no_template__";
-const GROUP_PREFIX = "group:";
 
 type TemplateWithSteps = Tables<"task_templates"> & {
   task_template_steps: Tables<"task_template_steps">[];
@@ -114,7 +113,7 @@ export function TaskForm({
   onDelete,
 }: {
   task?: Tables<"tasks">;
-  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
+  clients: Pick<Tables<"clients">, "id" | "name">[];
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   defaultClientId?: string;
   defaultAssigneeId?: string;
@@ -310,11 +309,10 @@ export function TaskForm({
     // its deadline) should never be blocked by it.
     const deadlineIso = values.deadline ? new Date(values.deadline).toISOString() : null;
 
-    const groupId = values.client_id?.startsWith(GROUP_PREFIX) ? values.client_id.slice(GROUP_PREFIX.length) : null;
-    const groupHasMembers = groupId ? clients.some((c) => c.group_id === groupId) : false;
+    const allClientGroup = groups.find((g) => g.all_client_id === values.client_id);
 
-    if (groupId && groupHasMembers) {
-      await submitForGroup(groupId, values, deadlineIso);
+    if (allClientGroup) {
+      await submitForGroup(allClientGroup.id, values, deadlineIso);
       return;
     }
 
@@ -326,7 +324,7 @@ export function TaskForm({
       description: values.description || null,
       task_type: values.task_type || null,
       client_id: values.client_id || null,
-      client_group_id: null,
+      credit_client_id: null,
       assignee_id: assigneeIds[0] ?? null,
       deadline: deadlineIso,
       priority: values.priority,
@@ -447,8 +445,8 @@ export function TaskForm({
       title: values.title,
       description: values.description || null,
       task_type: values.task_type || null,
-      client_id: pickBody.clientId as string,
-      client_group_id: groupId,
+      client_id: values.client_id as string,
+      credit_client_id: pickBody.clientId as string,
       assignee_id: assigneeIds[0] ?? null,
       deadline: deadlineIso,
       priority: values.priority,
@@ -515,18 +513,18 @@ export function TaskForm({
     setLoading(false);
     toast.success(
       task
-        ? `Updated "${payload.title}" — assigned to ${pickBody.clientName}`
+        ? `Updated "${payload.title}" — credit charged to ${pickBody.clientName}`
         : pickBody.allOverLimit
-          ? `Created "${payload.title}" — assigned to ${pickBody.clientName} (every location is over its credit limit this month)`
-          : `Created "${payload.title}" — assigned to ${pickBody.clientName}`
+          ? `Created "${payload.title}" — credit charged to ${pickBody.clientName} (every location is over its credit limit this month)`
+          : `Created "${payload.title}" — credit charged to ${pickBody.clientName}`
     );
 
     logActivity(supabase, {
       actorId: profile.id,
       action: task ? "task_updated" : "task_created",
       summary: task
-        ? `Updated task "${payload.title}" — reassigned to ${pickBody.groupName} (ALL), now at ${pickBody.clientName}`
-        : `Created task "${payload.title}" for ${pickBody.groupName} (ALL) — assigned to ${pickBody.clientName}`,
+        ? `Updated task "${payload.title}" — reassigned to ${pickBody.groupName} (ALL), credit charged to ${pickBody.clientName}`
+        : `Created task "${payload.title}" for ${pickBody.groupName} (ALL) — credit charged to ${pickBody.clientName}`,
       entityType: "task",
       entityId: taskId,
     });
@@ -619,16 +617,6 @@ export function TaskForm({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>No client (internal)</SelectItem>
-                      {!defaultClientId &&
-                        groups.map((g) => {
-                          const members = clients.filter((c) => c.group_id === g.id);
-                          if (members.length === 0) return null;
-                          return (
-                            <SelectItem key={`group:${g.id}`} value={`${GROUP_PREFIX}${g.id}`}>
-                              {g.name} (ALL)
-                            </SelectItem>
-                          );
-                        })}
                       {clients.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -638,10 +626,9 @@ export function TaskForm({
                   </Select>
                 )}
               />
-              {watch("client_id")?.startsWith(GROUP_PREFIX) && (
+              {groups.some((g) => g.all_client_id === watch("client_id")) && (
                 <p className="text-xs text-muted-foreground">
-                  Assigns this task to whichever location in this group has credit left, and
-                  shows it in the pipeline as a single &quot;(ALL)&quot; task.
+                  Charges credit to whichever location in this group has room left this month.
                 </p>
               )}
             </div>

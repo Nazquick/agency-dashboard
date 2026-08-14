@@ -16,7 +16,7 @@ export function AnalyticsDashboard({
   initialReports,
 }: {
   clients: Tables<"clients">[];
-  tasks: Pick<Tables<"tasks">, "client_id" | "created_at" | "task_type" | "archived">[];
+  tasks: Pick<Tables<"tasks">, "client_id" | "credit_client_id" | "created_at" | "task_type" | "archived">[];
   events: Pick<Tables<"calendar_events">, "client_id" | "created_at">[];
   initialSocialAccounts: Tables<"client_social_accounts">[];
   initialAssets: Tables<"content_assets">[];

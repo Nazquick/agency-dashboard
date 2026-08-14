@@ -15,8 +15,12 @@ export function AdminQuotaBadge() {
 
     async function refreshCount() {
       const [{ data: clients }, { data: tasks }, { data: topups }] = await Promise.all([
-        supabase.from("clients").select("id, name, monthly_credit_limit").eq("archived", false),
-        supabase.from("tasks").select("client_id, created_at, task_type, archived"),
+        supabase
+          .from("clients")
+          .select("id, name, monthly_credit_limit")
+          .eq("archived", false)
+          .eq("is_group_all", false),
+        supabase.from("tasks").select("client_id, credit_client_id, created_at, task_type, archived"),
         supabase.from("credit_topups").select("client_id, period_start, credits_added"),
       ]);
       const statuses = computeCreditStatus(clients ?? [], tasks ?? [], topups ?? []);

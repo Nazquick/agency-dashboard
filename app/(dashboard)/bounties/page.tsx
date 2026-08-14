@@ -7,7 +7,9 @@ export default async function BountiesPage() {
   const [{ data: tasks }, { data: clients }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("*, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name)")
+      .select(
+        "*, client:clients!tasks_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name)"
+      )
       .eq("is_special", true)
       .eq("archived", false)
       .order("created_at", { ascending: false }),

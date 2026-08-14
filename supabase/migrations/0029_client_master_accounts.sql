@@ -189,11 +189,14 @@ create policy "credit_topups_select_own_client" on public.credit_topups
     public.current_role() = 'client' and client_id in (select public.accessible_client_ids())
   );
 
--- Backfill: group JØNK's 9 locations.
-do $$
-declare
-  v_group_id uuid;
-begin
-  insert into public.client_groups (name) values ('JØNK') returning id into v_group_id;
-  update public.clients set group_id = v_group_id where name ilike 'JØNK (%';
-end $$;
+-- Backfill: group JØNK's 9 locations. DYOR-specific demo data — excluded
+-- from the tenant-schema build script (scripts/build-tenant-schema.mjs)
+-- via the trailing markers below, so a fresh white-label tenant never gets
+-- this seeded.
+do $$ -- whitelabel:exclude-line
+declare -- whitelabel:exclude-line
+  v_group_id uuid; -- whitelabel:exclude-line
+begin -- whitelabel:exclude-line
+  insert into public.client_groups (name) values ('JØNK') returning id into v_group_id; -- whitelabel:exclude-line
+  update public.clients set group_id = v_group_id where name ilike 'JØNK (%'; -- whitelabel:exclude-line
+end $$; -- whitelabel:exclude-line

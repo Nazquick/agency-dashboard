@@ -30,7 +30,7 @@ export default async function PortalLayout({
   }
 
   if (profile.role !== "client") {
-    redirect("/clients");
+    redirect("/today");
   }
 
   return (

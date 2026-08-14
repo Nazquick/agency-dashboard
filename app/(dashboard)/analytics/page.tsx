@@ -14,8 +14,8 @@ export default async function AnalyticsPage() {
     { data: contentProofs },
     { data: reports },
   ] = await Promise.all([
-    supabase.from("clients").select("*").eq("archived", false).order("name"),
-    supabase.from("tasks").select("client_id, created_at, task_type, archived"),
+    supabase.from("clients").select("*").eq("archived", false).eq("is_group_all", false).order("name"),
+    supabase.from("tasks").select("client_id, credit_client_id, created_at, task_type, archived"),
     supabase.from("calendar_events").select("client_id, created_at"),
     supabase.from("client_social_accounts").select("*"),
     supabase.from("content_assets").select("*"),
@@ -30,6 +30,7 @@ export default async function AnalyticsPage() {
       tasks={
         (tasks ?? []).filter((t) => t.client_id) as {
           client_id: string;
+          credit_client_id: string | null;
           created_at: string;
           task_type: string | null;
           archived: boolean;

@@ -48,7 +48,7 @@ export function InlineSignIn() {
     }
 
     router.refresh();
-    router.push(isClient ? "/portal" : "/clients");
+    router.push(isClient ? "/portal" : "/today");
   }
 
   return (

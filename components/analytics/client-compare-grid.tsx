@@ -19,7 +19,7 @@ export function ClientCompareGrid({
   onSelect,
 }: {
   clients: Tables<"clients">[];
-  tasks: Pick<Tables<"tasks">, "client_id" | "created_at" | "task_type" | "archived">[];
+  tasks: Pick<Tables<"tasks">, "client_id" | "credit_client_id" | "created_at" | "task_type" | "archived">[];
   events: Pick<Tables<"calendar_events">, "client_id" | "created_at">[];
   assets: Tables<"content_assets">[];
   sales: Pick<Tables<"client_sales">, "client_id" | "amount" | "sale_date">[];

@@ -14,7 +14,7 @@ export default async function AdminPage() {
 
   const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).single();
   if (!isMasterKeyUser(profile?.email)) {
-    redirect("/clients");
+    redirect("/today");
   }
 
   const [
@@ -30,16 +30,21 @@ export default async function AdminPage() {
     { data: sessions },
     { data: activity },
     { data: credentials },
+    { data: whitelabelTenants },
+    { data: whitelabelInvites },
   ] = await Promise.all([
     supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
     supabase
       .from("clients")
       .select("id, name, monthly_credit_limit")
       .eq("archived", false)
+      .eq("is_group_all", false)
       .order("name"),
     supabase
       .from("tasks")
-      .select("id, title, client_id, created_at, status, overage_charged, task_type, archived"),
+      .select(
+        "id, title, client_id, credit_client_id, created_at, status, overage_charged, task_type, archived"
+      ),
     supabase.from("credit_topups").select("client_id, period_start, credits_added"),
     supabase.from("profiles").select("id, full_name, client_id").eq("role", "client"),
     supabase.from("profiles").select("*").neq("role", "client").order("full_name"),
@@ -47,7 +52,7 @@ export default async function AdminPage() {
     supabase
       .from("tasks")
       .select(
-        "id, title, priority, deadline, client:clients(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
+        "id, title, priority, deadline, client:clients!tasks_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
       )
       .eq("archived", false)
       .neq("status", "done"),
@@ -55,6 +60,8 @@ export default async function AdminPage() {
     supabase.from("user_sessions").select("*"),
     supabase.from("activity_log").select("*").order("created_at", { ascending: false }).limit(500),
     supabase.from("client_credentials").select("*").order("platform"),
+    supabase.from("whitelabel_tenants").select("*").order("created_at", { ascending: false }),
+    supabase.from("whitelabel_invites").select("*").order("created_at", { ascending: false }),
   ]);
 
   const salaryTotal = (salaries ?? []).reduce((sum, s) => sum + Number(s.monthly_salary), 0);
@@ -80,6 +87,8 @@ export default async function AdminPage() {
         initialSessions={sessions ?? []}
         initialActivity={activity ?? []}
         initialCredentials={credentials ?? []}
+        whitelabelTenants={whitelabelTenants ?? []}
+        whitelabelInvites={whitelabelInvites ?? []}
       />
     </div>
   );

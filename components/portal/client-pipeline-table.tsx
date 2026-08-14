@@ -80,7 +80,7 @@ export function ClientPipelineTable({
     async function refetch() {
       const { data } = await supabase
         .from("tasks")
-        .select("*, client:clients(id, name)")
+        .select("*, client:clients!tasks_client_id_fkey(id, name)")
         .order("created_at", { ascending: false });
       if (data) setTasks(data as unknown as PortalTask[]);
     }

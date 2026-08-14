@@ -63,7 +63,7 @@ export function useAddRole() {
   return ctx.addRole;
 }
 
-export type GroupOption = { id: string; name: string };
+export type GroupOption = { id: string; name: string; all_client_id: string | null };
 
 const GroupsContext = createContext<{
   groups: GroupOption[];
