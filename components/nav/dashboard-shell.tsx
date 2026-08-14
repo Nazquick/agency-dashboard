@@ -20,7 +20,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       data-theme-variant={LAYOUT_VARIANT === "minimal" ? "minimal" : undefined}
     >
       <TopTabs />
-      <main className="mx-auto max-w-7xl p-4 sm:p-6">{children}</main>
+      <main className="mx-auto max-w-[1920px] p-4 sm:p-6">{children}</main>
     </div>
   );
 }
