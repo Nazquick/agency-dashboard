@@ -48,6 +48,7 @@ import {
 
 const ALL = "__all__";
 const ME = "__me__";
+const NONE = "__none__";
 const GROUP_PREFIX = "group:";
 
 type AssigneeSummary = { id: string; full_name: string; role: Tables<"profiles">["role"] };
@@ -275,6 +276,80 @@ export function PipelineBoard({
         status === "done"
           ? `Marked task "${task.title}" as done`
           : `Moved task "${task.title}" to ${statusLabel(status)}`,
+      entityType: "task",
+      entityId: task.id,
+    });
+  }
+
+  async function handleClientChange(task: TaskWithRelations, clientId: string) {
+    const supabase = createClient();
+    const allClientGroup = groups.find((g) => g.all_client_id === clientId);
+    let creditClientId: string | null = null;
+    if (allClientGroup) {
+      const pickRes = await fetch("/api/tasks/pick-group-client", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId: allClientGroup.id }),
+      });
+      const pickBody = await pickRes.json();
+      if (!pickRes.ok) {
+        toast.error(pickBody.error ?? "Failed to pick a location for this group");
+        return;
+      }
+      creditClientId = pickBody.clientId;
+    }
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ client_id: clientId === NONE ? null : clientId, credit_client_id: creditClientId })
+      .eq("id", task.id)
+      .select()
+      .single();
+    if (error || !data) {
+      toast.error(error?.message ?? "Failed to update task");
+      return;
+    }
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id ? mergeUpdatedTask(data, t.assignees.map((a) => a.id)) : t
+      )
+    );
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "task_updated",
+      summary: `Changed client on task "${task.title}"`,
+      entityType: "task",
+      entityId: task.id,
+    });
+  }
+
+  async function handleAssigneeChange(task: TaskWithRelations, profileId: string) {
+    const supabase = createClient();
+    const newAssigneeId = profileId === NONE ? null : profileId;
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ assignee_id: newAssigneeId })
+      .eq("id", task.id)
+      .select()
+      .single();
+    if (error || !data) {
+      toast.error(error?.message ?? "Failed to update task");
+      return;
+    }
+    await supabase.from("task_assignees").delete().eq("task_id", task.id);
+    const newAssigneeIds = newAssigneeId ? [newAssigneeId] : [];
+    if (newAssigneeId) {
+      const { error: assigneeError } = await supabase
+        .from("task_assignees")
+        .insert({ task_id: task.id, profile_id: newAssigneeId });
+      if (assigneeError) toast.error(`Assignee not saved: ${assigneeError.message}`);
+    }
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeUpdatedTask(data, newAssigneeIds) : t)));
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "task_updated",
+      summary: `Reassigned task "${task.title}" to ${
+        newAssigneeId ? (profiles.find((p) => p.id === newAssigneeId)?.full_name ?? "someone") : "unassigned"
+      }`,
       entityType: "task",
       entityId: task.id,
     });
@@ -609,25 +684,72 @@ export function PipelineBoard({
         </TableCell>
         {showClientColumn && (
           <TableCell className="text-muted-foreground">
-            {task.credit_client ? (
-              <div>
-                <div>{task.client?.name ?? "—"}</div>
-                <div className="text-xs">Credit: {task.credit_client.name}</div>
-              </div>
-            ) : (
-              (task.client?.name ?? "—")
+            <Select
+              value={task.client_id ?? NONE}
+              onValueChange={(v) => handleClientChange(task, v)}
+            >
+              <SelectTrigger className="h-8 w-40">
+                <SelectValue placeholder="No client" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>No client (internal)</SelectItem>
+                {groups
+                  .filter((g) => clients.some((c) => c.group_id === g.id) && g.all_client_id)
+                  .map((g) => (
+                    <SelectItem key={g.id} value={g.all_client_id as string}>
+                      {g.name} (ALL)
+                    </SelectItem>
+                  ))}
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {task.credit_client && (
+              <div className="mt-1 text-xs">Credit: {task.credit_client.name}</div>
             )}
           </TableCell>
         )}
         <TableCell className="text-muted-foreground">
-          <div
-            className="max-w-[160px] truncate"
-            title={task.assignees.length > 0 ? task.assignees.map((a) => a.full_name).join(", ") : undefined}
+          <Select
+            value={task.assignee_id ?? NONE}
+            onValueChange={(v) => handleAssigneeChange(task, v)}
           >
-            {task.assignees.length > 0
-              ? task.assignees.map((a) => a.full_name).join(", ")
-              : "Unassigned"}
-          </div>
+            <SelectTrigger className="h-8 w-36">
+              <SelectValue placeholder="Unassigned" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>Unassigned</SelectItem>
+              {profiles
+                .filter((p) => !p.is_external)
+                .map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.full_name}
+                  </SelectItem>
+                ))}
+              {profiles.some((p) => p.is_external) && (
+                <>
+                  {profiles
+                    .filter((p) => p.is_external)
+                    .map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.full_name} (External)
+                      </SelectItem>
+                    ))}
+                </>
+              )}
+            </SelectContent>
+          </Select>
+          {task.assignees.length > 1 && (
+            <div
+              className="mt-1 max-w-[160px] truncate text-xs"
+              title={task.assignees.map((a) => a.full_name).join(", ")}
+            >
+              +{task.assignees.length - 1} more: {task.assignees.filter((a) => a.id !== task.assignee_id).map((a) => a.full_name).join(", ")}
+            </div>
+          )}
         </TableCell>
         <TableCell>
           <Badge className={PRIORITY_BADGE_CLASS[task.priority as TaskPriority]}>
