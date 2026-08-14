@@ -21,6 +21,7 @@ import {
   type TaskStatus,
 } from "@/lib/tasks/constants";
 import { TaskForm } from "@/components/pipeline/task-form";
+import { TaskQuickEdit } from "@/components/pipeline/task-quick-edit";
 import { TaskColorDot } from "@/components/tasks/task-color-dot";
 import { taskColor, TASK_COLOR_LABEL } from "@/lib/tasks/color-code";
 import { flattenAssignees } from "@/lib/tasks/assignees";
@@ -485,19 +486,7 @@ export function PipelineBoard({
           trigger={<Button>New Task</Button>}
           onSuccess={(task, assigneeIds) =>
             setTasks((prev) => [
-              {
-                ...task,
-                client: clients.find((c) => c.id === task.client_id) ?? null,
-                credit_client: clients.find((c) => c.id === task.credit_client_id) ?? null,
-                assignee: profiles.find((p) => p.id === task.assignee_id)
-                  ? {
-                      id: task.assignee_id!,
-                      full_name: profiles.find((p) => p.id === task.assignee_id)!.full_name,
-                      role: profiles.find((p) => p.id === task.assignee_id)!.role,
-                    }
-                  : null,
-                assignees: resolveAssignees(assigneeIds, profiles),
-              },
+              mergeUpdatedTask(task, assigneeIds),
               ...prev.filter((t) => t.id !== task.id),
             ])
           }
@@ -548,6 +537,22 @@ export function PipelineBoard({
       )}
     </div>
   );
+
+  function mergeUpdatedTask(updated: Tables<"tasks">, assigneeIds: string[]): TaskWithRelations {
+    return {
+      ...updated,
+      client: clients.find((c) => c.id === updated.client_id) ?? null,
+      credit_client: clients.find((c) => c.id === updated.credit_client_id) ?? null,
+      assignee: profiles.find((p) => p.id === updated.assignee_id)
+        ? {
+            id: updated.assignee_id!,
+            full_name: profiles.find((p) => p.id === updated.assignee_id)!.full_name,
+            role: profiles.find((p) => p.id === updated.assignee_id)!.role,
+          }
+        : null,
+      assignees: resolveAssignees(assigneeIds, profiles),
+    };
+  }
 
   function renderRow(task: TaskWithRelations, options?: { muted?: boolean; nested?: boolean }) {
     const muted = options?.muted ?? false;
@@ -658,27 +663,20 @@ export function PipelineBoard({
               onOpenChange={(v) => setOpenTaskId(v ? task.id : null)}
               onSuccess={(updated, assigneeIds) =>
                 setTasks((prev) =>
-                  prev.map((t) =>
-                    t.id === updated.id
-                      ? {
-                          ...updated,
-                          client: clients.find((c) => c.id === updated.client_id) ?? null,
-                          credit_client: clients.find((c) => c.id === updated.credit_client_id) ?? null,
-                          assignee: profiles.find((p) => p.id === updated.assignee_id)
-                            ? {
-                                id: updated.assignee_id!,
-                                full_name: profiles.find((p) => p.id === updated.assignee_id)!
-                                  .full_name,
-                                role: profiles.find((p) => p.id === updated.assignee_id)!.role,
-                              }
-                            : null,
-                          assignees: resolveAssignees(assigneeIds, profiles),
-                        }
-                      : t
-                  )
+                  prev.map((t) => (t.id === updated.id ? mergeUpdatedTask(updated, assigneeIds) : t))
                 )
               }
               onDelete={(deletedId) => setTasks((prev) => prev.filter((t) => t.id !== deletedId))}
+            />
+            <TaskQuickEdit
+              task={task}
+              clients={clients}
+              profiles={profiles}
+              onUpdate={(updated, assigneeIds) =>
+                setTasks((prev) =>
+                  prev.map((t) => (t.id === updated.id ? mergeUpdatedTask(updated, assigneeIds) : t))
+                )
+              }
             />
             {leader && (
               <Button

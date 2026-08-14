@@ -21,15 +21,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || profile.role === "client") {
-    return NextResponse.json({ error: "Only staff can create group tasks" }, { status: 403 });
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, client_group_id")
+    .eq("id", user.id)
+    .single();
+  if (!profile) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json();
   const { groupId } = body as { groupId?: string };
   if (!groupId) {
     return NextResponse.json({ error: "groupId is required" }, { status: 400 });
+  }
+
+  // Staff can pick for any group; a client-portal caller can only pick for
+  // their own group (the master-account "All locations" request flow).
+  if (profile.role === "client" && profile.client_group_id !== groupId) {
+    return NextResponse.json({ error: "You can only do this for your own group" }, { status: 403 });
   }
 
   const admin = createAdminClient();

@@ -59,5 +59,16 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // The inline sign-in form only redirects at the moment of signing in —
+  // a returning visitor who already has a live session and lands on "/"
+  // directly (bookmark, typed URL) needs the same landing behavior, or
+  // they'd just see the marketing page again despite being logged in.
+  if (user && pathname === "/") {
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    const url = request.nextUrl.clone();
+    url.pathname = profile?.role === "client" ? "/portal" : "/today";
+    return NextResponse.redirect(url);
+  }
+
   return supabaseResponse;
 }

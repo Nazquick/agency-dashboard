@@ -37,7 +37,15 @@ const requestSchema = z.object({
 
 type RequestFormValues = z.infer<typeof requestSchema>;
 
-export function RequestTaskForm({ clients }: { clients: { id: string; name: string }[] }) {
+export function RequestTaskForm({
+  clients,
+  groupId,
+  allClientId,
+}: {
+  clients: { id: string; name: string }[];
+  groupId?: string | null;
+  allClientId?: string | null;
+}) {
   const profile = useUser();
   const [loading, setLoading] = useState(false);
   const showLocation = clients.length > 1;
@@ -63,9 +71,12 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
 
   async function onSubmit(values: RequestFormValues) {
     const allLocations = values.client_id === ALL_LOCATIONS;
-    const targetClients = allLocations ? clients : clients.filter((c) => c.id === values.client_id);
-    if (targetClients.length === 0) {
+    if (!allLocations && !values.client_id) {
       toast.error("Choose a location");
+      return;
+    }
+    if (allLocations && (!groupId || !allClientId)) {
+      toast.error("This account isn't linked to a location group");
       return;
     }
 
@@ -79,45 +90,63 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
     setLoading(true);
     const supabase = createClient();
 
-    const { data, error } = await supabase
+    // "All locations" is one task under the group's own "(ALL)" client —
+    // not a copy per location — with credit charged to whichever location
+    // has room this month, the same mechanism the staff pipeline uses.
+    let creditClientId: string | null = null;
+    let creditClientName: string | null = null;
+    if (allLocations && groupId) {
+      const pickRes = await fetch("/api/tasks/pick-group-client", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId }),
+      });
+      const pickBody = await pickRes.json();
+      if (!pickRes.ok) {
+        setLoading(false);
+        toast.error(pickBody.error ?? "Failed to pick a location for this group");
+        return;
+      }
+      creditClientId = pickBody.clientId;
+      creditClientName = pickBody.clientName;
+    }
+
+    const { data: task, error } = await supabase
       .from("tasks")
-      .insert(
-        targetClients.map((c) => ({
-          title: values.title,
-          description: values.description || null,
-          task_type: values.task_type || null,
-          client_id: c.id,
-          deadline: deadlineIso,
-          priority: values.priority,
-          status: "not_started" as const,
-          assignee_id: null,
-          source: "client" as const,
-        }))
-      )
-      .select();
+      .insert({
+        title: values.title,
+        description: values.description || null,
+        task_type: values.task_type || null,
+        client_id: allLocations ? allClientId : values.client_id,
+        credit_client_id: creditClientId,
+        deadline: deadlineIso,
+        priority: values.priority,
+        status: "not_started" as const,
+        assignee_id: null,
+        source: "client" as const,
+      })
+      .select()
+      .single();
 
     setLoading(false);
 
-    if (error) {
-      toast.error(error.message);
+    if (error || !task) {
+      toast.error(error?.message ?? "Failed to send request");
       return;
     }
 
-    for (const task of data) {
-      const client = targetClients.find((c) => c.id === task.client_id);
-      logActivity(supabase, {
-        actorId: profile.id,
-        action: "task_requested",
-        summary: allLocations
-          ? `Requested task "${values.title}" for ${client?.name ?? "a location"} (all locations)`
-          : `Requested task "${values.title}"`,
-        entityType: "task",
-        entityId: task.id,
-      });
-    }
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "task_requested",
+      summary: allLocations
+        ? `Requested task "${values.title}" for all locations — credit charged to ${creditClientName ?? "a location"}`
+        : `Requested task "${values.title}"`,
+      entityType: "task",
+      entityId: task.id,
+    });
 
     toast.success(
-      allLocations ? `Sent to the team for all ${targetClients.length} locations` : "Sent to the team"
+      allLocations ? `Sent to the team — credit charged to ${creditClientName}` : "Sent to the team"
     );
     reset({
       title: "",
@@ -176,8 +205,8 @@ export function RequestTaskForm({ clients }: { clients: { id: string; name: stri
                 />
                 {allLocationsSelected && (
                   <p className="text-xs text-muted-foreground">
-                    Creates the same task at every location — each location is charged its
-                    own credit cost from its own monthly quota.
+                    Creates one task for the whole group — credit is charged to whichever
+                    location has room left this month.
                   </p>
                 )}
               </div>

@@ -16,7 +16,22 @@ export default async function PortalRequestPage() {
     .single();
   if (!profile?.client_id && !profile?.client_group_id) redirect("/");
 
-  const { data: clients } = await supabase.from("clients").select("id, name").order("name");
+  const [{ data: clients }, { data: group }] = await Promise.all([
+    supabase.from("clients").select("id, name").order("name"),
+    profile.client_group_id
+      ? supabase
+          .from("client_groups")
+          .select("id, all_client_id")
+          .eq("id", profile.client_group_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
-  return <RequestTaskForm clients={clients ?? []} />;
+  return (
+    <RequestTaskForm
+      clients={clients ?? []}
+      groupId={group?.id ?? null}
+      allClientId={group?.all_client_id ?? null}
+    />
+  );
 }

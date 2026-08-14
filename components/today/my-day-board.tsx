@@ -13,6 +13,7 @@ import {
   type TaskStatus,
 } from "@/lib/tasks/constants";
 import { TaskForm } from "@/components/pipeline/task-form";
+import { TaskQuickEdit } from "@/components/pipeline/task-quick-edit";
 import type { Tables } from "@/lib/types/database.types";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -148,6 +149,10 @@ export function MyDayBoard({
     }
   }
 
+  function mergeUpdatedTask(updated: Tables<"tasks">): MyDayTask {
+    return { ...updated, client: clients.find((c) => c.id === updated.client_id) ?? null };
+  }
+
   function renderRow(task: MyDayTask, options?: { urgent?: boolean }) {
     return (
       <div
@@ -194,15 +199,17 @@ export function MyDayBoard({
           open={openTaskId === task.id}
           onOpenChange={(open) => setOpenTaskId(open ? task.id : null)}
           onSuccess={(updated) =>
-            setTasks((prev) =>
-              prev.map((t) =>
-                t.id === updated.id
-                  ? { ...updated, client: clients.find((c) => c.id === updated.client_id) ?? null }
-                  : t
-              )
-            )
+            setTasks((prev) => prev.map((t) => (t.id === updated.id ? mergeUpdatedTask(updated) : t)))
           }
           onDelete={(id) => setTasks((prev) => prev.filter((t) => t.id !== id))}
+        />
+        <TaskQuickEdit
+          task={task}
+          clients={clients}
+          profiles={profiles}
+          onUpdate={(updated) =>
+            setTasks((prev) => prev.map((t) => (t.id === updated.id ? mergeUpdatedTask(updated) : t)))
+          }
         />
       </div>
     );
