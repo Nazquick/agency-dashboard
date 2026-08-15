@@ -4,6 +4,7 @@ export const BASE_TABS = [
   { href: "/pipeline", label: "Action Pipeline" },
   { href: "/bounties", label: "Bounties" },
   { href: "/calendar", label: "Calendar" },
+  { href: "/post-plan", label: "Post Plan" },
   { href: "/questions", label: "Questions" },
   { href: "/team", label: "Team" },
   { href: "/analytics", label: "Analytics" },

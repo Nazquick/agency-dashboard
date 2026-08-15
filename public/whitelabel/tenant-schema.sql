@@ -2237,3 +2237,388 @@ create policy "task_steps_delete_staff" on public.task_steps
 alter table public.tasks add column batch_id uuid;
 create index tasks_batch_id_idx on public.tasks(batch_id) where batch_id is not null;
 
+-- === 0043_meeting_task_calendar_sync.sql ===
+-- Auto-syncs "meeting" content-type tasks into calendar_events, one row
+-- per assignee (mirrors the existing meetup pattern in
+-- confirm_meetup_if_all_accepted). The task stays the source of truth:
+-- editing a meeting task's title/deadline/assignees re-syncs the linked
+-- calendar_events rows. Editing the calendar event directly still works
+-- (unchanged EventForm edit flow), but a later edit to the source task
+-- will overwrite it again — an accepted tradeoff, not a full
+-- bidirectional sync.
+
+alter table public.calendar_events
+  drop constraint calendar_events_task_id_fkey;
+
+alter table public.calendar_events
+  add constraint calendar_events_task_id_fkey
+    foreign key (task_id) references public.tasks(id) on delete cascade;
+
+create unique index calendar_events_task_assignee_key
+  on public.calendar_events (task_id, assignee_id)
+  where task_id is not null;
+
+create or replace function public.sync_meeting_calendar_events()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.task_type = 'meeting' and new.deadline is not null and new.archived = false then
+    insert into public.calendar_events
+      (client_id, task_id, assignee_id, title, event_type, starts_at, ends_at, source, created_by)
+    select new.client_id, new.id, ta.profile_id, new.title, 'meeting', new.deadline,
+           new.deadline + interval '1 hour', new.source, new.created_by
+    from public.task_assignees ta
+    where ta.task_id = new.id
+    on conflict (task_id, assignee_id) where task_id is not null
+    do update set
+      client_id = excluded.client_id,
+      title = excluded.title,
+      starts_at = excluded.starts_at,
+      ends_at = excluded.ends_at,
+      source = excluded.source;
+  else
+    delete from public.calendar_events where task_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tasks_sync_meeting_calendar_events on public.tasks;
+create trigger tasks_sync_meeting_calendar_events
+  after insert or update on public.tasks
+  for each row
+  execute function public.sync_meeting_calendar_events();
+
+create or replace function public.sync_meeting_calendar_event_for_assignee()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_task public.tasks%rowtype;
+begin
+  select * into v_task from public.tasks where id = new.task_id;
+  if v_task.task_type = 'meeting' and v_task.deadline is not null and v_task.archived = false then
+    insert into public.calendar_events
+      (client_id, task_id, assignee_id, title, event_type, starts_at, ends_at, source, created_by)
+    values
+      (v_task.client_id, v_task.id, new.profile_id, v_task.title, 'meeting', v_task.deadline,
+       v_task.deadline + interval '1 hour', v_task.source, v_task.created_by)
+    on conflict (task_id, assignee_id) where task_id is not null
+    do update set
+      client_id = excluded.client_id,
+      title = excluded.title,
+      starts_at = excluded.starts_at,
+      ends_at = excluded.ends_at,
+      source = excluded.source;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists task_assignees_sync_meeting_calendar_event on public.task_assignees;
+create trigger task_assignees_sync_meeting_calendar_event
+  after insert on public.task_assignees
+  for each row
+  execute function public.sync_meeting_calendar_event_for_assignee();
+
+create or replace function public.cleanup_meeting_calendar_event_for_assignee()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.calendar_events where task_id = old.task_id and assignee_id = old.profile_id;
+  return old;
+end;
+$$;
+
+drop trigger if exists task_assignees_cleanup_meeting_calendar_event on public.task_assignees;
+create trigger task_assignees_cleanup_meeting_calendar_event
+  after delete on public.task_assignees
+  for each row
+  execute function public.cleanup_meeting_calendar_event_for_assignee();
+
+-- Backfill: meeting tasks created before this migration existed.
+insert into public.calendar_events
+  (client_id, task_id, assignee_id, title, event_type, starts_at, ends_at, source, created_by)
+select t.client_id, t.id, ta.profile_id, t.title, 'meeting', t.deadline,
+       t.deadline + interval '1 hour', t.source, t.created_by
+from public.tasks t
+join public.task_assignees ta on ta.task_id = t.id
+where t.task_type = 'meeting' and t.deadline is not null and t.archived = false
+on conflict (task_id, assignee_id) where task_id is not null do nothing;
+
+-- === 0044_calendar_event_group.sql ===
+-- Lets a calendar event have multiple assignees. Same shape as the
+-- meeting-task sync (0043): one calendar_events row per assignee, tied
+-- together by a shared event_group_id instead of a separate join table —
+-- keeps per-assignee conflict-checking, color-coding, and RLS exactly as
+-- they are today, since each row still carries its own assignee_id.
+--
+-- Every existing row gets its own distinct event_group_id (a group of
+-- one), so single-assignee events are unaffected.
+
+alter table public.calendar_events
+  add column event_group_id uuid not null default gen_random_uuid();
+
+create unique index calendar_events_group_assignee_key
+  on public.calendar_events (event_group_id, assignee_id);
+
+-- Any staff member (not just the leader or the specific assignee) needs
+-- to be able to add/remove OTHER people as co-assignees on an event —
+-- mirrors tasks_update_staff (0038)'s same reasoning: assignment is a
+-- work-routing signal, not an access boundary. Delete is widened too,
+-- since removing a co-assignee from an event is a delete of their row.
+drop policy "calendar_events_insert_own_or_leader" on public.calendar_events;
+drop policy "calendar_events_update_own_or_leader" on public.calendar_events;
+drop policy "calendar_events_delete_own_or_leader" on public.calendar_events;
+
+create policy "calendar_events_insert_staff" on public.calendar_events
+  for insert with check (public.current_role() <> 'client');
+create policy "calendar_events_update_staff" on public.calendar_events
+  for update using (public.current_role() <> 'client');
+create policy "calendar_events_delete_staff" on public.calendar_events
+  for delete using (public.current_role() <> 'client');
+
+-- Task-synced meeting events (0043) should group the same way: a task's
+-- own id is already a stable per-task uuid, so reuse it directly as the
+-- event_group_id instead of generating a fresh one per assignee — that
+-- way dragging one location's synced meeting on the calendar moves it
+-- for every assignee on that task, not just the one that was dragged.
+update public.calendar_events set event_group_id = task_id where task_id is not null;
+
+create or replace function public.sync_meeting_calendar_events()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.task_type = 'meeting' and new.deadline is not null and new.archived = false then
+    insert into public.calendar_events
+      (client_id, task_id, event_group_id, assignee_id, title, event_type, starts_at, ends_at, source, created_by)
+    select new.client_id, new.id, new.id, ta.profile_id, new.title, 'meeting', new.deadline,
+           new.deadline + interval '1 hour', new.source, new.created_by
+    from public.task_assignees ta
+    where ta.task_id = new.id
+    on conflict (task_id, assignee_id) where task_id is not null
+    do update set
+      client_id = excluded.client_id,
+      title = excluded.title,
+      starts_at = excluded.starts_at,
+      ends_at = excluded.ends_at,
+      source = excluded.source;
+  else
+    delete from public.calendar_events where task_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.sync_meeting_calendar_event_for_assignee()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_task public.tasks%rowtype;
+begin
+  select * into v_task from public.tasks where id = new.task_id;
+  if v_task.task_type = 'meeting' and v_task.deadline is not null and v_task.archived = false then
+    insert into public.calendar_events
+      (client_id, task_id, event_group_id, assignee_id, title, event_type, starts_at, ends_at, source, created_by)
+    values
+      (v_task.client_id, v_task.id, v_task.id, new.profile_id, v_task.title, 'meeting', v_task.deadline,
+       v_task.deadline + interval '1 hour', v_task.source, v_task.created_by)
+    on conflict (task_id, assignee_id) where task_id is not null
+    do update set
+      client_id = excluded.client_id,
+      title = excluded.title,
+      starts_at = excluded.starts_at,
+      ends_at = excluded.ends_at,
+      source = excluded.source;
+  end if;
+  return new;
+end;
+$$;
+
+-- === 0045_task_client_group.sql ===
+-- A "{Group} (ALL)" task is now a single row fulfilled by one location
+-- (chosen by available credit, see app/api/tasks/pick-group-client), not
+-- a copy created at every location in the group. client_group_id marks a
+-- task as belonging to the whole group for display purposes ("JØNK
+-- (ALL)" in the Pipeline) while client_id still points at the one
+-- location actually doing the work, so credit/quota tracking and portal
+-- visibility are unaffected.
+alter table public.tasks
+  add column client_group_id uuid references public.client_groups(id);
+
+-- === 0046_group_all_pseudo_client.sql ===
+-- Replaces the client_group_id tagging approach (a task pinned to one real
+-- location, tagged as "really for the whole group") with an actual pseudo
+-- client per group, e.g. "JØNK (ALL)". A task assigned to it is just one
+-- normal task under one normal client_id — no more duplicate-looking rows
+-- per location. Credit is still deducted from a real location, tracked via
+-- the new tasks.credit_client_id column instead of client_id itself.
+
+alter table public.clients add column is_group_all boolean not null default false;
+alter table public.client_groups add column all_client_id uuid references public.clients(id) unique;
+alter table public.tasks add column credit_client_id uuid references public.clients(id);
+
+-- Grant client-master-account portal logins visibility into their group's
+-- pseudo client too (it deliberately has clients.group_id = null so it
+-- never shows up as a "member" in ordinary group-membership lookups
+-- throughout the app — this is the one place that needs an explicit
+-- carve-out for it).
+create or replace function public.accessible_client_ids()
+returns setof uuid language sql stable security definer set search_path = public as $$
+  select id from public.clients
+  where id = public.current_client_id()
+     or group_id = public.current_client_group_id()
+     or id = (select all_client_id from public.client_groups where id = public.current_client_group_id())
+$$;
+
+-- Backfill: create the "(ALL)" pseudo client for every existing group, and
+-- migrate any tasks already tagged via the old client_group_id column onto
+-- the new model — credit stays with whichever real location was picked at
+-- the time (client_id), the task's own client becomes the group's pseudo
+-- client.
+do $$
+declare
+  g record;
+  new_client_id uuid;
+begin
+  for g in select id, name from public.client_groups where all_client_id is null loop
+    insert into public.clients (name, monthly_credit_limit, is_group_all)
+    values (g.name || ' (ALL)', null, true)
+    returning id into new_client_id;
+
+    update public.client_groups set all_client_id = new_client_id where id = g.id;
+
+    update public.tasks
+    set credit_client_id = client_id,
+        client_id = new_client_id
+    where client_group_id = g.id;
+  end loop;
+end $$;
+
+alter table public.tasks drop column client_group_id;
+
+-- === 0047_social_post_plan.sql ===
+-- Post Plan: a social-media content calendar, separate from the client
+-- task pipeline. Each post is scheduled for a specific date/time, color
+-- coded by media type (video/image/graphic/collab/campaign), credits
+-- whichever team members were involved, and can carry files. Staff-only —
+-- clients never see this, it's the agency's own publishing calendar, not
+-- a per-client deliverable.
+
+create table public.social_posts (
+  id uuid primary key default gen_random_uuid(),
+  platform text not null check (platform in (
+    'instagram', 'tiktok', 'facebook', 'youtube', 'linkedin', 'x', 'snapchat', 'pinterest', 'threads', 'other'
+  )),
+  media_type text not null check (media_type in ('video', 'image', 'graphic', 'collab', 'campaign')),
+  caption text,
+  tag_handles text,
+  suggested_song text,
+  post_at timestamptz not null,
+  created_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index social_posts_post_at_idx on public.social_posts(post_at);
+
+create trigger social_posts_set_updated_at
+  before update on public.social_posts
+  for each row execute function public.set_updated_at();
+
+create table public.social_post_credits (
+  post_id uuid not null references public.social_posts(id) on delete cascade,
+  profile_id uuid not null references public.profiles(id) on delete cascade,
+  primary key (post_id, profile_id)
+);
+
+create table public.social_post_attachments (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references public.social_posts(id) on delete cascade,
+  uploaded_by uuid references public.profiles(id),
+  storage_path text not null,
+  file_name text not null,
+  file_size bigint not null,
+  mime_type text,
+  created_at timestamptz not null default now()
+);
+
+create index social_post_attachments_post_id_idx on public.social_post_attachments(post_id);
+
+alter table public.social_posts enable row level security;
+alter table public.social_post_credits enable row level security;
+alter table public.social_post_attachments enable row level security;
+
+create policy "social_posts_select_staff" on public.social_posts
+  for select using (public.current_role() <> 'client');
+
+create policy "social_posts_insert_staff" on public.social_posts
+  for insert with check (public.current_role() <> 'client' and created_by = auth.uid());
+
+create policy "social_posts_update_staff" on public.social_posts
+  for update using (public.current_role() <> 'client');
+
+create policy "social_posts_delete_leader_only" on public.social_posts
+  for delete using (public.current_role() = 'team_leader');
+
+create policy "social_post_credits_select_staff" on public.social_post_credits
+  for select using (public.current_role() <> 'client');
+
+create policy "social_post_credits_insert_staff" on public.social_post_credits
+  for insert with check (public.current_role() <> 'client');
+
+create policy "social_post_credits_delete_staff" on public.social_post_credits
+  for delete using (public.current_role() <> 'client');
+
+create policy "social_post_attachments_select_staff" on public.social_post_attachments
+  for select using (public.current_role() <> 'client');
+
+create policy "social_post_attachments_insert_staff" on public.social_post_attachments
+  for insert with check (public.current_role() <> 'client' and auth.uid() is not null);
+
+create policy "social_post_attachments_delete" on public.social_post_attachments
+  for delete using (uploaded_by = auth.uid() or public.current_role() = 'team_leader');
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('social-post-attachments', 'social-post-attachments', false, 52428800);
+
+create policy "social_post_attachments_storage_select" on storage.objects
+  for select using (
+    bucket_id = 'social-post-attachments' and public.current_role() <> 'client'
+  );
+
+create policy "social_post_attachments_storage_insert" on storage.objects
+  for insert with check (
+    bucket_id = 'social-post-attachments' and public.current_role() <> 'client'
+  );
+
+create policy "social_post_attachments_storage_delete" on storage.objects
+  for delete using (
+    bucket_id = 'social-post-attachments'
+    and (owner = auth.uid() or public.current_role() = 'team_leader')
+  );
+
+alter publication supabase_realtime add table public.social_posts;
+alter publication supabase_realtime add table public.social_post_credits;
+alter publication supabase_realtime add table public.social_post_attachments;
+
+-- Push-notify the admin (nasir@thequickstyle.com) whenever a file is
+-- uploaded to a post — mirrors notify_task_assignment's pg_net + Edge
+-- Function pattern (0034_push_notifications.sql). Hardcodes this
+-- project's own function URL/secret, so excluded from the white-label
+-- tenant schema build like that trigger is.
+
