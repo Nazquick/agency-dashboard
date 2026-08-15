@@ -63,6 +63,7 @@ export function CreatePostDialog({
   profiles,
   clients,
   defaultDate,
+  defaultClientId,
   trigger,
   onSuccess,
   onDelete,
@@ -71,6 +72,7 @@ export function CreatePostDialog({
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   defaultDate?: Date;
+  defaultClientId?: string;
   trigger: React.ReactNode;
   onSuccess?: (post: Tables<"social_posts">, creditIds: string[]) => void;
   onDelete?: (id: string) => void;
@@ -128,7 +130,7 @@ export function CreatePostDialog({
         tag_handles: "",
         suggested_song: "",
         post_at: defaultDate ? toDatetimeLocal(defaultDate) : "",
-        client_id: NONE,
+        client_id: defaultClientId ?? NONE,
       });
       setCreditIds([]);
     }

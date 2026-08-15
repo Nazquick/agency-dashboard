@@ -45,11 +45,13 @@ export function PostPlanCalendar({
   profiles = [],
   clients = [],
   readOnly = false,
+  defaultClientId,
 }: {
   initialPosts: PostWithRelations[];
   profiles?: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   clients?: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   readOnly?: boolean;
+  defaultClientId?: string;
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -60,10 +62,14 @@ export function PostPlanCalendar({
     let cancelled = false;
 
     async function refetch() {
-      const { data } = await supabase
+      let query = supabase
         .from("social_posts")
-        .select("*, social_post_credits(profile:profiles(id, full_name))")
+        .select("*, client:clients(id, name), social_post_credits(profile:profiles(id, full_name))")
         .order("post_at");
+      if (defaultClientId) {
+        query = query.eq("client_id", defaultClientId);
+      }
+      const { data } = await query;
       if (!data || cancelled) return;
       setPosts(flattenPostCredits(data as unknown as Parameters<typeof flattenPostCredits>[0]));
     }
@@ -72,7 +78,7 @@ export function PostPlanCalendar({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       channel = supabase
-        .channel("post-plan-calendar")
+        .channel(`post-plan-calendar-${defaultClientId ?? "all"}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "social_posts" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "social_post_credits" }, refetch)
         .subscribe();
@@ -84,7 +90,7 @@ export function PostPlanCalendar({
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, []);
+  }, [defaultClientId]);
 
   const grid = useMemo(() => buildGrid(month), [month]);
 
@@ -179,6 +185,7 @@ export function PostPlanCalendar({
                       profiles={profiles}
                       clients={clients}
                       defaultDate={new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0)}
+                      defaultClientId={defaultClientId}
                       trigger={
                         <button
                           type="button"
@@ -217,6 +224,7 @@ export function PostPlanCalendar({
                         post={p}
                         profiles={profiles}
                         clients={clients}
+                        defaultClientId={defaultClientId}
                         trigger={chip}
                         onSuccess={mergeUpdatedPost}
                         onDelete={(id) => setPosts((prev) => prev.filter((post) => post.id !== id))}
