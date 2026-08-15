@@ -7,6 +7,7 @@ import { createRealtimeClient } from "@/lib/supabase/realtime-client";
 import { MEDIA_TYPES, mediaTypeHex, mediaTypeLabel, platformLabel } from "@/lib/social-posts/constants";
 import { flattenPostCredits } from "@/lib/social-posts/flatten";
 import { CreatePostDialog, type PostWithRelations } from "@/components/social-posts/create-post-dialog";
+import { PostViewDialog } from "@/components/social-posts/post-view-dialog";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,10 +42,14 @@ function buildGrid(month: Date): Date[] {
 
 export function PostPlanCalendar({
   initialPosts,
-  profiles,
+  profiles = [],
+  clients = [],
+  readOnly = false,
 }: {
   initialPosts: PostWithRelations[];
-  profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
+  profiles?: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
+  clients?: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
+  readOnly?: boolean;
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -169,45 +174,54 @@ export function PostPlanCalendar({
                   >
                     {day.getDate()}
                   </span>
-                  <CreatePostDialog
-                    profiles={profiles}
-                    defaultDate={new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0)}
-                    trigger={
-                      <button
-                        type="button"
-                        className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                        title="Add post"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    }
-                    onSuccess={mergeUpdatedPost}
-                  />
-                </div>
-                <div className="space-y-1">
-                  {dayPosts.map((p) => (
+                  {!readOnly && (
                     <CreatePostDialog
-                      key={p.id}
-                      post={p}
                       profiles={profiles}
+                      clients={clients}
+                      defaultDate={new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0)}
                       trigger={
                         <button
                           type="button"
-                          className="block w-full truncate rounded px-1.5 py-0.5 text-left text-xs font-medium"
-                          style={{
-                            backgroundColor: `${mediaTypeHex(p.media_type)}22`,
-                            color: mediaTypeHex(p.media_type),
-                          }}
-                          title={`${platformLabel(p.platform)} · ${mediaTypeLabel(p.media_type)}${p.caption ? ` — ${p.caption}` : ""}`}
+                          className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                          title="Add post"
                         >
-                          {new Date(p.post_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
-                          {p.caption || platformLabel(p.platform)}
+                          <Plus className="h-3.5 w-3.5" />
                         </button>
                       }
                       onSuccess={mergeUpdatedPost}
-                      onDelete={(id) => setPosts((prev) => prev.filter((post) => post.id !== id))}
                     />
-                  ))}
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {dayPosts.map((p) => {
+                    const chip = (
+                      <button
+                        type="button"
+                        className="block w-full truncate rounded px-1.5 py-0.5 text-left text-xs font-medium"
+                        style={{
+                          backgroundColor: `${mediaTypeHex(p.media_type)}22`,
+                          color: mediaTypeHex(p.media_type),
+                        }}
+                        title={`${platformLabel(p.platform)} · ${mediaTypeLabel(p.media_type)}${p.caption ? ` — ${p.caption}` : ""}${p.client ? ` · ${p.client.name}` : ""}`}
+                      >
+                        {new Date(p.post_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
+                        {p.caption || platformLabel(p.platform)}
+                      </button>
+                    );
+                    return readOnly ? (
+                      <PostViewDialog key={p.id} post={p} trigger={chip} />
+                    ) : (
+                      <CreatePostDialog
+                        key={p.id}
+                        post={p}
+                        profiles={profiles}
+                        clients={clients}
+                        trigger={chip}
+                        onSuccess={mergeUpdatedPost}
+                        onDelete={(id) => setPosts((prev) => prev.filter((post) => post.id !== id))}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             );

@@ -4,6 +4,7 @@ import type { PostWithRelations } from "@/components/social-posts/create-post-di
 type CreditProfile = Pick<Tables<"profiles">, "id" | "full_name">;
 
 type RawPostRow = Tables<"social_posts"> & {
+  client: { id: string; name: string } | null;
   social_post_credits: { profile: CreditProfile | null }[];
 };
 

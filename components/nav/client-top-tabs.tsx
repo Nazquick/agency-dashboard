@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/portal", label: "Pipeline" },
   { href: "/portal/calendar", label: "Calendar" },
+  { href: "/portal/post-plan", label: "Post Plan" },
   { href: "/portal/request", label: "Request Task" },
   { href: "/portal/questions", label: "Questions" },
   { href: "/portal/analytics", label: "Analytics" },

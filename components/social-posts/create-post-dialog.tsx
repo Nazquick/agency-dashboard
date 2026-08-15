@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { useUser } from "@/components/providers/user-provider";
+import { useUser, useGroups } from "@/components/providers/user-provider";
 import { logActivity } from "@/lib/activity/log";
 import { PLATFORMS, MEDIA_TYPES, platformLabel } from "@/lib/social-posts/constants";
 import { PostAttachments } from "@/components/social-posts/post-attachments";
@@ -31,6 +31,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+const NONE = "__none__";
+
 const postSchema = z.object({
   platform: z.string().min(1, "Choose a platform"),
   media_type: z.string().min(1, "Choose a media type"),
@@ -38,11 +40,13 @@ const postSchema = z.object({
   tag_handles: z.string().optional(),
   suggested_song: z.string().optional(),
   post_at: z.string().min(1, "Choose a date and time"),
+  client_id: z.string().optional(),
 });
 
 type PostFormValues = z.infer<typeof postSchema>;
 
 export type PostWithRelations = Tables<"social_posts"> & {
+  client: { id: string; name: string } | null;
   credits: { id: string; full_name: string }[];
 };
 
@@ -56,6 +60,7 @@ function toDatetimeLocal(value: string | Date | null): string {
 export function CreatePostDialog({
   post,
   profiles,
+  clients,
   defaultDate,
   trigger,
   onSuccess,
@@ -63,12 +68,14 @@ export function CreatePostDialog({
 }: {
   post?: PostWithRelations;
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
+  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   defaultDate?: Date;
   trigger: React.ReactNode;
   onSuccess?: (post: Tables<"social_posts">, creditIds: string[]) => void;
   onDelete?: (id: string) => void;
 }) {
   const profile = useUser();
+  const groups = useGroups();
   const [open, setOpen] = useState(false);
   const [creditIds, setCreditIds] = useState<string[]>(() => post?.credits.map((c) => c.id) ?? []);
   const [saving, setSaving] = useState(false);
@@ -88,6 +95,7 @@ export function CreatePostDialog({
       tag_handles: "",
       suggested_song: "",
       post_at: "",
+      client_id: NONE,
     },
   });
 
@@ -105,6 +113,7 @@ export function CreatePostDialog({
         tag_handles: post.tag_handles ?? "",
         suggested_song: post.suggested_song ?? "",
         post_at: toDatetimeLocal(post.post_at),
+        client_id: post.client_id ?? NONE,
       });
       setCreditIds(post.credits.map((c) => c.id));
     } else {
@@ -115,6 +124,7 @@ export function CreatePostDialog({
         tag_handles: "",
         suggested_song: "",
         post_at: defaultDate ? toDatetimeLocal(defaultDate) : "",
+        client_id: NONE,
       });
       setCreditIds([]);
     }
@@ -132,6 +142,7 @@ export function CreatePostDialog({
       tag_handles: values.tag_handles || null,
       suggested_song: values.suggested_song || null,
       post_at: postAtIso,
+      client_id: values.client_id && values.client_id !== NONE ? values.client_id : null,
     };
 
     const { data, error } = post
@@ -243,6 +254,36 @@ export function CreatePostDialog({
                 )}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Client</Label>
+            <Controller
+              name="client_id"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value ?? NONE} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="No client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>No client (internal)</SelectItem>
+                    {groups
+                      .filter((g) => clients.some((c) => c.group_id === g.id) && g.all_client_id)
+                      .map((g) => (
+                        <SelectItem key={g.id} value={g.all_client_id as string}>
+                          {g.name} (ALL)
+                        </SelectItem>
+                      ))}
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           <div className="space-y-2">

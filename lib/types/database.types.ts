@@ -1307,6 +1307,7 @@ export type Database = {
       social_posts: {
         Row: {
           caption: string | null
+          client_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -1319,6 +1320,7 @@ export type Database = {
         }
         Insert: {
           caption?: string | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1331,6 +1333,7 @@ export type Database = {
         }
         Update: {
           caption?: string | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1342,6 +1345,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "social_posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "social_posts_created_by_fkey"
             columns: ["created_by"]
@@ -1974,6 +1984,7 @@ export type Database = {
     Functions: {
       accessible_client_ids: { Args: never; Returns: string[] }
       can_access_task: { Args: { p_task_id: string }; Returns: boolean }
+      can_view_post: { Args: { p_post_id: string }; Returns: boolean }
       claim_special_task: {
         Args: { p_task_id: string }
         Returns: {

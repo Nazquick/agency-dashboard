@@ -5,10 +5,10 @@ import { flattenPostCredits } from "@/lib/social-posts/flatten";
 export default async function PostPlanPage() {
   const supabase = await createClient();
 
-  const [{ data: posts }, { data: profiles }] = await Promise.all([
+  const [{ data: posts }, { data: profiles }, { data: clients }] = await Promise.all([
     supabase
       .from("social_posts")
-      .select("*, social_post_credits(profile:profiles(id, full_name))")
+      .select("*, client:clients(id, name), social_post_credits(profile:profiles(id, full_name))")
       .order("post_at"),
     supabase
       .from("profiles")
@@ -16,6 +16,7 @@ export default async function PostPlanPage() {
       .neq("role", "client")
       .eq("active", true)
       .order("full_name"),
+    supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
   ]);
 
   return (
@@ -32,6 +33,7 @@ export default async function PostPlanPage() {
           (posts ?? []) as unknown as Parameters<typeof flattenPostCredits>[0]
         )}
         profiles={profiles ?? []}
+        clients={clients ?? []}
       />
     </div>
   );

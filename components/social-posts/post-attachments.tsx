@@ -25,7 +25,15 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function PostAttachments({ postId, postLabel }: { postId: string; postLabel: string }) {
+export function PostAttachments({
+  postId,
+  postLabel,
+  readOnly = false,
+}: {
+  postId: string;
+  postLabel: string;
+  readOnly?: boolean;
+}) {
   const profile = useUser();
   const leader = isTeamLeader(profile.role);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -177,20 +185,24 @@ export function PostAttachments({ postId, postLabel }: { postId: string; postLab
     <div className="space-y-3 border-t pt-4">
       <Label>Files</Label>
 
-      <div className="flex flex-wrap items-end gap-2">
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          className="block flex-1 text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium"
-        />
-        <Button type="button" size="sm" disabled={uploading} onClick={handleUpload}>
-          {uploading ? "Uploading…" : "Upload"}
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Max 50MB per file, up to {MAX_POST_ATTACHMENTS} files at once. The admin gets notified on every upload.
-      </p>
+      {!readOnly && (
+        <>
+          <div className="flex flex-wrap items-end gap-2">
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              className="block flex-1 text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium"
+            />
+            <Button type="button" size="sm" disabled={uploading} onClick={handleUpload}>
+              {uploading ? "Uploading…" : "Upload"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Max 50MB per file, up to {MAX_POST_ATTACHMENTS} files at once. The admin gets notified on every upload.
+          </p>
+        </>
+      )}
 
       {!loading && attachments.length === 0 && (
         <p className="text-sm text-muted-foreground">No files yet.</p>
@@ -217,7 +229,7 @@ export function PostAttachments({ postId, postLabel }: { postId: string; postLab
                   {formatBytes(a.file_size)} · {a.uploader?.full_name ?? "Unknown"}
                 </span>
               </div>
-              {(a.uploaded_by === profile.id || leader) && (
+              {!readOnly && (a.uploaded_by === profile.id || leader) && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => handleDelete(a)}>
                   Remove
                 </Button>
