@@ -2,6 +2,18 @@ import type { Database } from "@/lib/types/database.types";
 
 export type PostPlatform = Database["public"]["Tables"]["social_posts"]["Row"]["platform"];
 export type PostMediaType = Database["public"]["Tables"]["social_posts"]["Row"]["media_type"];
+export type PostType = Database["public"]["Tables"]["social_posts"]["Row"]["post_type"];
+
+export const POST_TYPES: { value: PostType; label: string }[] = [
+  { value: "post", label: "Post" },
+  { value: "reel", label: "Reel" },
+  { value: "story", label: "Story" },
+  { value: "carousel", label: "Carousel" },
+];
+
+export function postTypeLabel(value: string): string {
+  return POST_TYPES.find((t) => t.value === value)?.label ?? value;
+}
 
 export const PLATFORMS: { value: PostPlatform; label: string }[] = [
   { value: "instagram", label: "Instagram" },

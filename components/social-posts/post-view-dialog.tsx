@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { mediaTypeBadgeClass, mediaTypeLabel, platformLabel } from "@/lib/social-posts/constants";
+import { mediaTypeBadgeClass, mediaTypeLabel, platformLabel, postTypeLabel } from "@/lib/social-posts/constants";
 import { PostAttachments } from "@/components/social-posts/post-attachments";
 import type { PostWithRelations } from "@/components/social-posts/create-post-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,7 @@ export function PostViewDialog({ post, trigger }: { post: PostWithRelations; tri
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{platformLabel(post.platform)}</Badge>
+            <Badge variant="secondary">{postTypeLabel(post.post_type)}</Badge>
             <Badge className={mediaTypeBadgeClass(post.media_type)}>{mediaTypeLabel(post.media_type)}</Badge>
           </div>
 

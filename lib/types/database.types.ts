@@ -1314,6 +1314,7 @@ export type Database = {
           media_type: string
           platform: string
           post_at: string
+          post_type: string
           suggested_song: string | null
           tag_handles: string | null
           updated_at: string
@@ -1327,6 +1328,7 @@ export type Database = {
           media_type: string
           platform: string
           post_at: string
+          post_type?: string
           suggested_song?: string | null
           tag_handles?: string | null
           updated_at?: string
@@ -1340,6 +1342,7 @@ export type Database = {
           media_type?: string
           platform?: string
           post_at?: string
+          post_type?: string
           suggested_song?: string | null
           tag_handles?: string | null
           updated_at?: string

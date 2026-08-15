@@ -206,6 +206,7 @@ export function PostPlanCalendar({
                       >
                         {new Date(p.post_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
                         {p.caption || platformLabel(p.platform)}
+                        {p.client && <span className="opacity-75"> · {p.client.name}</span>}
                       </button>
                     );
                     return readOnly ? (

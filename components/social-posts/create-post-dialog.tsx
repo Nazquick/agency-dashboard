@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useUser, useGroups } from "@/components/providers/user-provider";
 import { logActivity } from "@/lib/activity/log";
-import { PLATFORMS, MEDIA_TYPES, platformLabel } from "@/lib/social-posts/constants";
+import { PLATFORMS, MEDIA_TYPES, POST_TYPES, platformLabel } from "@/lib/social-posts/constants";
 import { PostAttachments } from "@/components/social-posts/post-attachments";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ const NONE = "__none__";
 const postSchema = z.object({
   platform: z.string().min(1, "Choose a platform"),
   media_type: z.string().min(1, "Choose a media type"),
+  post_type: z.string().min(1, "Choose a post type"),
   caption: z.string().optional(),
   tag_handles: z.string().optional(),
   suggested_song: z.string().optional(),
@@ -91,6 +92,7 @@ export function CreatePostDialog({
     defaultValues: {
       platform: "instagram",
       media_type: "video",
+      post_type: "post",
       caption: "",
       tag_handles: "",
       suggested_song: "",
@@ -109,6 +111,7 @@ export function CreatePostDialog({
       reset({
         platform: post.platform,
         media_type: post.media_type,
+        post_type: post.post_type,
         caption: post.caption ?? "",
         tag_handles: post.tag_handles ?? "",
         suggested_song: post.suggested_song ?? "",
@@ -120,6 +123,7 @@ export function CreatePostDialog({
       reset({
         platform: "instagram",
         media_type: "video",
+        post_type: "post",
         caption: "",
         tag_handles: "",
         suggested_song: "",
@@ -138,6 +142,7 @@ export function CreatePostDialog({
     const payload = {
       platform: values.platform,
       media_type: values.media_type,
+      post_type: values.post_type,
       caption: values.caption || null,
       tag_handles: values.tag_handles || null,
       suggested_song: values.suggested_song || null,
@@ -211,7 +216,7 @@ export function CreatePostDialog({
           <DialogTitle>{post ? "Edit post" : "New post"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Platform</Label>
               <Controller
@@ -247,6 +252,27 @@ export function CreatePostDialog({
                       {MEDIA_TYPES.map((m) => (
                         <SelectItem key={m.value} value={m.value}>
                           {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Post type</Label>
+              <Controller
+                name="post_type"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POST_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
