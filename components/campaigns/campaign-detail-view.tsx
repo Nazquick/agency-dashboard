@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
+import { toast } from "sonner";
 import {
   campaignStatusBadgeClass,
   campaignStatusLabel,
@@ -42,10 +43,30 @@ export function CampaignDetailView({
 }) {
   const router = useRouter();
   const [campaign, setCampaign] = useState(initialCampaign);
+  const [exporting, setExporting] = useState(false);
 
   function handleUpdated(updated: Tables<"campaigns">) {
     const client = clients.find((c) => c.id === updated.client_id) ?? campaign.client;
     setCampaign({ ...updated, client });
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    const res = await fetch(`/api/campaigns/${campaign.id}/export`);
+    if (!res.ok) {
+      setExporting(false);
+      toast.error("Failed to generate summary");
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${campaign.code}-summary.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExporting(false);
+    toast.success("Summary downloaded");
   }
 
   return (
@@ -65,18 +86,24 @@ export function CampaignDetailView({
             ))}
           </div>
         </div>
-        <CampaignForm
-          campaign={campaign}
-          clients={clients}
-          trigger={
-            <Button variant="outline">
-              <Pencil className="mr-1.5 h-4 w-4" />
-              Edit
-            </Button>
-          }
-          onSuccess={handleUpdated}
-          onDelete={() => router.push("/campaigns")}
-        />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={exporting}>
+            <Download className="mr-1.5 h-4 w-4" />
+            {exporting ? "Exporting…" : "Export summary"}
+          </Button>
+          <CampaignForm
+            campaign={campaign}
+            clients={clients}
+            trigger={
+              <Button variant="outline">
+                <Pencil className="mr-1.5 h-4 w-4" />
+                Edit
+              </Button>
+            }
+            onSuccess={handleUpdated}
+            onDelete={() => router.push("/campaigns")}
+          />
+        </div>
       </div>
 
       <div className="rounded-lg border bg-card p-4">

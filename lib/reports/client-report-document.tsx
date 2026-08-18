@@ -104,7 +104,7 @@ function fmtKr(value: number) {
 
 // Same vector as components/branding/dyor-logo.tsx, redrawn with react-pdf's
 // Svg/Path primitives — react-pdf can't render a plain React DOM <svg>.
-function DyorMark({ style }: { style: object }) {
+export function DyorMark({ style }: { style: object }) {
   return (
     <Svg viewBox="0 0 144 25" style={{ width: 34, height: 5.9, ...style }} fixed>
       <Path
