@@ -126,6 +126,123 @@ export type Database = {
           },
         ]
       }
+      campaign_attachments: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          file_name: string
+          file_size: number
+          id?: string
+          mime_type?: string | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_attachments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          ad_spend: number | null
+          boost_location: string | null
+          budget: number | null
+          client_id: string
+          code: string
+          created_at: string
+          created_by: string | null
+          distribution_channels: string[]
+          id: string
+          name: string
+          notes: string | null
+          publication_date: string | null
+          roas: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ad_spend?: number | null
+          boost_location?: string | null
+          budget?: number | null
+          client_id: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          distribution_channels?: string[]
+          id?: string
+          name: string
+          notes?: string | null
+          publication_date?: string | null
+          roas?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ad_spend?: number | null
+          boost_location?: string | null
+          budget?: number | null
+          client_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          distribution_channels?: string[]
+          id?: string
+          name?: string
+          notes?: string | null
+          publication_date?: string | null
+          roas?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_baselines: {
         Row: {
           ad_spend: number | null
