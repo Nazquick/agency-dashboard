@@ -100,9 +100,10 @@ export async function POST(request: Request) {
     ] = await Promise.all([
       supabase
         .from("tasks")
-        .select("title, status, priority, deadline, client:clients(name), assignee:profiles(full_name, role)", {
-          count: "exact",
-        })
+        .select(
+          "title, status, priority, deadline, client:clients!tasks_client_id_fkey(name), assignee:profiles!tasks_assignee_id_fkey(full_name, role)",
+          { count: "exact" }
+        )
         .eq("archived", false)
         .eq("is_special", false)
         .order("deadline", { ascending: true, nullsFirst: false })
@@ -114,7 +115,9 @@ export async function POST(request: Request) {
         .limit(SNAPSHOT_ROW_LIMIT),
       supabase
         .from("calendar_events")
-        .select("title, event_type, starts_at, ends_at, client:clients(name), assignee:profiles(full_name, role)")
+        .select(
+          "title, event_type, starts_at, ends_at, client:clients(name), assignee:profiles!calendar_events_assignee_id_fkey(full_name, role)"
+        )
         .gte("starts_at", nowIso)
         .order("starts_at", { ascending: true })
         .limit(SNAPSHOT_ROW_LIMIT),
