@@ -8,6 +8,7 @@ export const BASE_TABS = [
   { href: "/questions", label: "Questions" },
   { href: "/team", label: "Team" },
   { href: "/analytics", label: "Analytics" },
+  { href: "/assistant", label: "Assistant" },
 ] as const;
 
 export const ADMIN_TAB = { href: "/admin", label: "Admin" } as const;
