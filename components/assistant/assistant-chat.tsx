@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { useUser } from "@/components/providers/user-provider";
+import { isMasterKeyUser } from "@/lib/auth/roles";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -11,13 +12,14 @@ import { cn } from "@/lib/utils";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const SUGGESTIONS = [
+  "What's due this week?",
   "What campaigns are currently active?",
-  "What's the status of our most recent campaign?",
   "Who should I loop in on a campaign for one of our clients?",
 ];
 
 export function AssistantChat() {
   const profile = useUser();
+  const isAdmin = isMasterKeyUser(profile.email);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,8 +69,11 @@ export function AssistantChat() {
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              Hi {profile.full_name.split(" ")[0]} — ask me anything about the agency&apos;s campaigns.
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Hi {profile.full_name.split(" ")[0]} — ask me anything about what&apos;s going on right
+              now: tasks, deadlines, campaigns, or clients.
+              {isAdmin &&
+                " Tell me anything worth remembering and I'll carry it into every future conversation with the team."}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
@@ -114,7 +119,7 @@ export function AssistantChat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about a campaign…"
+          placeholder="Ask about a task, deadline, or campaign…"
           rows={1}
           className="min-h-0 flex-1 resize-none"
         />

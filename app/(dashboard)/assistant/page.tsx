@@ -6,7 +6,7 @@ export default function AssistantPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Assistant</h1>
         <p className="text-sm text-muted-foreground">
-          Ask about any campaign — status, channels, timing, or who to loop in.
+          Live from the dashboard — tasks, deadlines, client activity, and campaigns.
         </p>
       </div>
 
