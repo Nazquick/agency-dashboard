@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { BASE_TABS, ADMIN_TAB } from "@/lib/nav/items";
+import { BASE_TABS, ADMIN_TAB, CAMPAIGNS_TAB } from "@/lib/nav/items";
 
 function initials(name: string) {
   return name
@@ -49,7 +49,7 @@ export function TopTabs() {
     setMobileOpen(false);
   }
 
-  const tabs = isMasterKeyUser(profile.email) ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS;
+  const tabs = isMasterKeyUser(profile.email) ? [...BASE_TABS, CAMPAIGNS_TAB, ADMIN_TAB] : BASE_TABS;
 
   async function handleSignOut() {
     const supabase = createClient();

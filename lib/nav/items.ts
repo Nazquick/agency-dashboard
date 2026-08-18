@@ -11,3 +11,4 @@ export const BASE_TABS = [
 ] as const;
 
 export const ADMIN_TAB = { href: "/admin", label: "Admin" } as const;
+export const CAMPAIGNS_TAB = { href: "/campaigns", label: "Campaigns" } as const;
