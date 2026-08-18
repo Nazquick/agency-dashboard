@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calendar, dateFnsLocalizer, type View } from "react-big-calendar";
+import { Calendar, dateFnsLocalizer, type View, type SlotInfo } from "react-big-calendar";
 import withDragAndDrop, { type EventInteractionArgs } from "react-big-calendar/lib/addons/dragAndDrop";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
@@ -101,6 +101,7 @@ export function CalendarView({
   const [view, setView] = useState<View>("month");
   const [date, setDate] = useState(new Date());
   const [editingEvent, setEditingEvent] = useState<CalendarEventWithRelations | null>(null);
+  const [creatingDate, setCreatingDate] = useState<Date | null>(null);
 
   const filteredEvents = useMemo(
     () => events.filter((e) => !showAssigneeFilter || visibleAssignees.has(e.assignee_id)),
@@ -200,6 +201,12 @@ export function CalendarView({
     moveGroup(event.resource, new Date(start), new Date(end));
   }
 
+  function handleSelectSlot(slotInfo: SlotInfo) {
+    if (slotInfo.action === "doubleClick") {
+      setCreatingDate(slotInfo.start);
+    }
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -271,9 +278,28 @@ export function CalendarView({
             resizable
             onEventDrop={handleEventDrop}
             onEventResize={handleEventResize}
+            selectable={!readOnly}
+            onSelectSlot={readOnly ? undefined : handleSelectSlot}
           />
         </div>
       </div>
+
+      {creatingDate && (
+        <EventForm
+          clients={clients}
+          profiles={profiles}
+          defaultClientId={defaultClientId}
+          defaultStartDate={creatingDate}
+          open
+          onOpenChange={(v) => {
+            if (!v) setCreatingDate(null);
+          }}
+          onSuccess={(saved, removed) => {
+            upsertLocal(saved, removed);
+            setCreatingDate(null);
+          }}
+        />
+      )}
 
       {editingEvent && (
         <EventForm

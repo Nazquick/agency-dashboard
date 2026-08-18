@@ -2910,3 +2910,14 @@ create policy "assistant_knowledge_delete_master_key" on public.assistant_knowle
     (select email from public.profiles where id = auth.uid()) = 'nasir@thequickstyle.com'
   );
 
+-- === 0054_calendar_event_notifications.sql ===
+-- Push-notify a calendar event's assignee whenever the event is created —
+-- calendar_events already stores one row per assignee (co-assignees share
+-- an event_group_id), so a plain AFTER INSERT ROW trigger fires once per
+-- person naturally, whether the row came from EventForm directly or from
+-- the meeting-task -> calendar_events auto-sync trigger (0043). Mirrors
+-- notify_task_assignment's pg_net + Edge Function pattern exactly,
+-- reusing the same webhook secret (Edge Function secrets are
+-- project-wide). Hardcodes this project's own function URL/secret, so
+-- excluded from the white-label tenant schema build like that trigger is.
+

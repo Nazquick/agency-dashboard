@@ -54,12 +54,21 @@ function toDatetimeLocal(value: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// A new event defaults to 9am on the given day (or today, if no day was
+// picked) — never blank, so the form is fillable without hunting for a date.
+function defaultCreateStartValue(defaultStartDate?: Date): string {
+  const base = defaultStartDate ?? new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T09:00`;
+}
+
 export function EventForm({
   event,
   clients,
   profiles,
   defaultClientId,
   defaultAssigneeId,
+  defaultStartDate,
   trigger,
   open: controlledOpen,
   onOpenChange: setControlledOpen,
@@ -70,6 +79,10 @@ export function EventForm({
   profiles: Pick<Tables<"profiles">, "id" | "full_name">[];
   defaultClientId?: string;
   defaultAssigneeId?: string;
+  // The day a new event should default to (e.g. the day double-clicked on
+  // the calendar) — ignored when editing an existing event. Defaults to
+  // today, always at 9am, when omitted.
+  defaultStartDate?: Date;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -90,6 +103,10 @@ export function EventForm({
   // update in place, which to delete (assignee unchecked), and to exclude
   // from conflict checks (a group's own rows always "overlap" themselves).
   const [groupRows, setGroupRows] = useState<Tables<"calendar_events">[]>(event ? [event] : []);
+  // Once the user directly edits the end time, stop auto-shifting it when
+  // the start time changes — editing an existing event never auto-shifts
+  // (its end time already reflects a considered duration).
+  const [endsAtTouched, setEndsAtTouched] = useState(Boolean(event));
   const {
     register,
     handleSubmit,
@@ -103,12 +120,11 @@ export function EventForm({
       title: event?.title ?? "",
       event_type: event?.event_type ?? "other",
       client_id: event?.client_id ?? defaultClientId ?? undefined,
-      starts_at: toDatetimeLocal(event?.starts_at ?? null),
+      starts_at: event ? toDatetimeLocal(event.starts_at) : defaultCreateStartValue(defaultStartDate),
       ends_at: toDatetimeLocal(event?.ends_at ?? null),
     },
   });
 
-  const eventType = useWatch({ control, name: "event_type" });
   const startsAt = useWatch({ control, name: "starts_at" });
   const endsAt = useWatch({ control, name: "ends_at" });
 
@@ -121,9 +137,10 @@ export function EventForm({
       title: event?.title ?? "",
       event_type: event?.event_type ?? "other",
       client_id: event?.client_id ?? defaultClientId ?? undefined,
-      starts_at: toDatetimeLocal(event?.starts_at ?? null),
+      starts_at: event ? toDatetimeLocal(event.starts_at) : defaultCreateStartValue(defaultStartDate),
       ends_at: toDatetimeLocal(event?.ends_at ?? null),
     });
+    setEndsAtTouched(Boolean(event));
 
     if (event) {
       setAssigneeIds([event.assignee_id]);
@@ -151,16 +168,17 @@ export function EventForm({
       });
   }, [open, event]);
 
-  // A meeting's end time defaults to an hour after its start — only fills
-  // in while empty, so it never clobbers a duration someone already set.
+  // A new event's end time follows its start time, 60 minutes later, for
+  // every event type — until the user directly edits the end field, after
+  // which further start changes stop overriding their chosen duration.
+  // Never applies while editing an existing event (endsAtTouched starts
+  // true in that case).
   useEffect(() => {
-    if (eventType === "meeting" && startsAt && !endsAt) {
-      const start = new Date(startsAt);
-      if (!Number.isNaN(start.getTime())) {
-        setValue("ends_at", toDatetimeLocal(new Date(start.getTime() + ONE_HOUR_MS).toISOString()));
-      }
-    }
-  }, [eventType, startsAt, endsAt, setValue]);
+    if (endsAtTouched || !startsAt) return;
+    const start = new Date(startsAt);
+    if (Number.isNaN(start.getTime())) return;
+    setValue("ends_at", toDatetimeLocal(new Date(start.getTime() + ONE_HOUR_MS).toISOString()));
+  }, [startsAt, endsAtTouched, setValue]);
 
   useEffect(() => {
     let cancelled = false;
@@ -383,7 +401,11 @@ export function EventForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="ends_at">Ends</Label>
-              <Input id="ends_at" type="datetime-local" {...register("ends_at")} />
+              <Input
+                id="ends_at"
+                type="datetime-local"
+                {...register("ends_at", { onChange: () => setEndsAtTouched(true) })}
+              />
               {errors.ends_at && (
                 <p className="text-sm text-destructive">{errors.ends_at.message}</p>
               )}
