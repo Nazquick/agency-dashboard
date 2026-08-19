@@ -1713,6 +1713,9 @@ export type Database = {
         Row: {
           ai_estimate_status: string | null
           ai_estimated_minutes: number | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           archived: boolean
           assignee_id: string | null
           batch_id: string | null
@@ -1743,6 +1746,9 @@ export type Database = {
         Insert: {
           ai_estimate_status?: string | null
           ai_estimated_minutes?: number | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           archived?: boolean
           assignee_id?: string | null
           batch_id?: string | null
@@ -1773,6 +1779,9 @@ export type Database = {
         Update: {
           ai_estimate_status?: string | null
           ai_estimated_minutes?: number | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           archived?: boolean
           assignee_id?: string | null
           batch_id?: string | null
@@ -1801,6 +1810,13 @@ export type Database = {
           urgent_since?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_assignee_id_fkey"
             columns: ["assignee_id"]
@@ -2139,6 +2155,9 @@ export type Database = {
         Returns: {
           ai_estimate_status: string | null
           ai_estimated_minutes: number | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           archived: boolean
           assignee_id: string | null
           batch_id: string | null

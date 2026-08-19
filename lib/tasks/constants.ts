@@ -100,3 +100,15 @@ export const STATUS_BADGE_CLASS: Record<TaskStatus, string> = {
   review: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400",
   done: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
 };
+
+export type TaskApprovalStatus = "pending" | "approved";
+
+export const APPROVAL_STATUS_LABEL: Record<TaskApprovalStatus, string> = {
+  pending: "Pending approval",
+  approved: "Approved",
+};
+
+export const APPROVAL_STATUS_BADGE_CLASS: Record<TaskApprovalStatus, string> = {
+  pending: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400",
+  approved: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+};

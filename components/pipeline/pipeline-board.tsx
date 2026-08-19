@@ -14,11 +14,14 @@ import {
   STATUSES,
   PRIORITY_BADGE_CLASS,
   PRIORITY_RANK,
+  APPROVAL_STATUS_LABEL,
+  APPROVAL_STATUS_BADGE_CLASS,
   priorityLabel,
   statusLabel,
   isLongUrgent,
   type TaskPriority,
   type TaskStatus,
+  type TaskApprovalStatus,
 } from "@/lib/tasks/constants";
 import { TaskForm } from "@/components/pipeline/task-form";
 import { TaskQuickEdit } from "@/components/pipeline/task-quick-edit";
@@ -276,6 +279,36 @@ export function PipelineBoard({
         status === "done"
           ? `Marked task "${task.title}" as done`
           : `Moved task "${task.title}" to ${statusLabel(status)}`,
+      entityType: "task",
+      entityId: task.id,
+    });
+  }
+
+  async function handleApprovalToggle(task: TaskWithRelations) {
+    const next: TaskApprovalStatus = task.approval_status === "approved" ? "pending" : "approved";
+    const approvedAt = next === "approved" ? new Date().toISOString() : null;
+    const approvedBy = next === "approved" ? profile.id : null;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("tasks")
+      .update({ approval_status: next, approved_by: approvedBy, approved_at: approvedAt })
+      .eq("id", task.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id ? { ...t, approval_status: next, approved_by: approvedBy, approved_at: approvedAt } : t
+      )
+    );
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: next === "approved" ? "task_approved" : "task_approval_reverted",
+      summary:
+        next === "approved"
+          ? `Approved task "${task.title}" — ready to post`
+          : `Reverted approval on task "${task.title}"`,
       entityType: "task",
       entityId: task.id,
     });
@@ -598,6 +631,7 @@ export function PipelineBoard({
                         <TableHead>Assignee</TableHead>
                         <TableHead>Priority</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Approval</TableHead>
                         <TableHead>Deadline</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -772,6 +806,19 @@ export function PipelineBoard({
               ))}
             </SelectContent>
           </Select>
+        </TableCell>
+        <TableCell>
+          {leader ? (
+            <button type="button" onClick={() => handleApprovalToggle(task)} title="Click to toggle approval">
+              <Badge className={APPROVAL_STATUS_BADGE_CLASS[task.approval_status as TaskApprovalStatus]}>
+                {APPROVAL_STATUS_LABEL[task.approval_status as TaskApprovalStatus]}
+              </Badge>
+            </button>
+          ) : (
+            <Badge className={APPROVAL_STATUS_BADGE_CLASS[task.approval_status as TaskApprovalStatus]}>
+              {APPROVAL_STATUS_LABEL[task.approval_status as TaskApprovalStatus]}
+            </Badge>
+          )}
         </TableCell>
         <TableCell className="text-muted-foreground">{formatDeadline(task.deadline)}</TableCell>
         <TableCell className="text-right">
