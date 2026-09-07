@@ -59,7 +59,7 @@ export default async function PortalPipelinePage() {
           />
         ))}
       </div>
-      <ClientPipelineTable initialTasks={allTasks} clients={accessibleClients} />
+      <ClientPipelineTable initialTasks={allTasks.filter((t) => !t.archived)} clients={accessibleClients} />
     </div>
   );
 }
