@@ -34,11 +34,14 @@ export function CreditStatusPanel({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const baseLimit = monthlyCreditLimit ?? 8;
-  const limit = baseLimit + (topup?.credits_added ?? 0);
+  // null means unlimited — matches lib/analytics/quota.ts's convention, not
+  // a "use the default 8" fallback (that was a bug: a client with no cap
+  // was silently shown as capped at 8).
+  const baseLimit = monthlyCreditLimit;
+  const limit = baseLimit == null ? null : baseLimit + (topup?.credits_added ?? 0);
   const used = creditsUsedInMonth(tasks, clientId);
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-  const over = used > limit;
+  const pct = limit != null && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const over = limit != null && used > limit;
 
   async function handleApprove() {
     setLoading(true);
@@ -66,17 +69,21 @@ export function CreditStatusPanel({
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">{clientName ? `${clientName} — credits` : "Credits this month"}</span>
           <Badge variant={over ? "destructive" : "secondary"}>
-            {used} / {limit}
+            {limit == null ? `${used} used` : `${used} / ${limit}`}
           </Badge>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className={`h-full rounded-full transition-all ${over ? "bg-red-500" : "bg-primary"}`}
-            style={{ width: `${Math.max(4, pct)}%` }}
-          />
-        </div>
+        {limit != null && (
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full transition-all ${over ? "bg-red-500" : "bg-primary"}`}
+              style={{ width: `${Math.max(4, pct)}%` }}
+            />
+          </div>
+        )}
 
-        {topup ? (
+        {baseLimit == null ? (
+          <p className="text-xs text-muted-foreground">Unlimited credits this month.</p>
+        ) : topup ? (
           <Badge variant="secondary">Topped up to {limit} credits this month</Badge>
         ) : monthlyFee == null ? (
           <p className="text-xs text-muted-foreground">
