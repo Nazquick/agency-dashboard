@@ -61,6 +61,7 @@ export type TaskWithRelations = Tables<"tasks"> & {
   credit_client: { id: string; name: string } | null;
   assignee: AssigneeSummary | null;
   assignees: AssigneeSummary[];
+  requested_by: { id: string; full_name: string } | null;
 };
 
 function resolveAssignees(
@@ -122,7 +123,7 @@ export function PipelineBoard({
       let query = supabase
         .from("tasks")
         .select(
-          "*, client:clients!tasks_client_id_fkey(id, name), credit_client:clients!tasks_credit_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role))"
+          "*, client:clients!tasks_client_id_fkey(id, name), credit_client:clients!tasks_credit_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(id, full_name, role), task_assignees(profile:profiles(id, full_name, role)), requested_by:profiles!tasks_created_by_fkey(id, full_name)"
         )
         .order("created_at", { ascending: false });
       if (defaultClientId) {
@@ -648,6 +649,11 @@ export function PipelineBoard({
   );
 
   function mergeUpdatedTask(updated: Tables<"tasks">, assigneeIds: string[]): TaskWithRelations {
+    // Whoever requested the task never changes on edit, and the requester
+    // is a client-role profile (excluded from the staff-only `profiles`
+    // list passed to this board), so it can't be re-resolved the way
+    // assignee is — carry it over from whatever's already in state.
+    const existing = tasks.find((t) => t.id === updated.id);
     return {
       ...updated,
       client: clients.find((c) => c.id === updated.client_id) ?? null,
@@ -660,6 +666,7 @@ export function PipelineBoard({
           }
         : null,
       assignees: resolveAssignees(assigneeIds, profiles),
+      requested_by: existing?.requested_by ?? null,
     };
   }
 
@@ -711,7 +718,7 @@ export function PipelineBoard({
             {task.title}
             {task.source === "client" && (
               <Badge variant="secondary" className="shrink-0">
-                Client request
+                Client request{task.requested_by ? ` — ${task.requested_by.full_name}` : ""}
               </Badge>
             )}
           </div>

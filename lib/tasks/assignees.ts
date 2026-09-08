@@ -19,6 +19,7 @@ export function flattenAssignees(
     credit_client: { id: string; name: string } | null;
     assignee: AssigneeSummary | null;
     task_assignees?: { profile: AssigneeSummary | null }[] | null;
+    requested_by: { id: string; full_name: string } | null;
   })[]
 ): TaskWithRelations[] {
   return rows.map(({ task_assignees, ...row }) => ({

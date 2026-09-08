@@ -124,6 +124,7 @@ export function RequestTaskForm({
         status: "not_started" as const,
         assignee_id: null,
         source: "client" as const,
+        created_by: profile.id,
       })
       .select()
       .single();
