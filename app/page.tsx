@@ -12,6 +12,7 @@ export default async function Home() {
     .from("clients")
     .select("id, name, cover_image_path")
     .eq("archived", false)
+    .eq("is_internal", false)
     .order("name");
 
   // JØNK's nine locations all read as one brand on the landing page — fold
