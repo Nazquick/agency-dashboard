@@ -7,6 +7,7 @@ import { createRealtimeClient } from "@/lib/supabase/realtime-client";
 import { MEDIA_TYPES, mediaTypeHex, mediaTypeLabel, platformLabel } from "@/lib/social-posts/constants";
 import { flattenPostCredits } from "@/lib/social-posts/flatten";
 import { clientThemeFor } from "@/lib/social-posts/client-themes";
+import { ClientPostKpis } from "@/components/social-posts/client-post-kpis";
 import { CreatePostDialog, type PostWithRelations } from "@/components/social-posts/create-post-dialog";
 import { PostViewDialog } from "@/components/social-posts/post-view-dialog";
 import type { Tables } from "@/lib/types/database.types";
@@ -330,6 +331,10 @@ export function PostPlanCalendar({
           })}
         </div>
       </div>
+
+      {!readOnly && activeClientId && (
+        <ClientPostKpis posts={visiblePosts} month={month} grid={grid} theme={theme} />
+      )}
 
       {!readOnly && !activeClientId && (
         <div className="rounded-lg border bg-card p-4">
