@@ -284,6 +284,11 @@ export function PostPlanCalendar({
                 </div>
                 <div className="space-y-1">
                   {dayPosts.map((p) => {
+                    // On a single client's calendar the whole grid is already
+                    // that client's colour; in "All clients" each chip has to
+                    // say whose post it is.
+                    const showClient = !activeClientId && !fixedThemeClientName && p.client != null;
+                    const chipTheme = showClient ? clientThemeFor(p.client?.name) : null;
                     const chip = (
                       <button
                         type="button"
@@ -291,12 +296,17 @@ export function PostPlanCalendar({
                         style={{
                           backgroundColor: `${mediaTypeHex(p.media_type)}22`,
                           color: mediaTypeHex(p.media_type),
+                          ...(chipTheme ? { borderLeft: `4px solid ${chipTheme.hex}` } : {}),
                         }}
                         title={`${platformLabel(p.platform)} · ${mediaTypeLabel(p.media_type)}${p.caption ? ` — ${p.caption}` : ""}${p.client ? ` · ${p.client.name}` : ""}`}
                       >
+                        {showClient && p.client && (
+                          <span className="block truncate text-[10px] font-bold uppercase tracking-wide">
+                            {p.client.name.trim()}
+                          </span>
+                        )}
                         {new Date(p.post_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
                         {p.caption || platformLabel(p.platform)}
-                        {p.client && <span className="opacity-75"> · {p.client.name}</span>}
                       </button>
                     );
                     return readOnly ? (
