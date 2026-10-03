@@ -767,6 +767,7 @@ export type Database = {
           cover_image_path: string | null
           created_at: string
           created_by: string | null
+          credit_period: string
           description: string | null
           group_id: string | null
           id: string
@@ -781,6 +782,7 @@ export type Database = {
           cover_image_path?: string | null
           created_at?: string
           created_by?: string | null
+          credit_period?: string
           description?: string | null
           group_id?: string | null
           id?: string
@@ -795,6 +797,7 @@ export type Database = {
           cover_image_path?: string | null
           created_at?: string
           created_by?: string | null
+          credit_period?: string
           description?: string | null
           group_id?: string | null
           id?: string

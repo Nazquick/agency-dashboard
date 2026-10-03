@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { creditsUsedInMonth } from "@/lib/analytics/metrics";
+import { creditsUsedInPeriod, periodWord, type CreditPeriod } from "@/lib/analytics/metrics";
 import type { Tables } from "@/lib/types/database.types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ export function CreditStatusPanel({
   clientId,
   clientName,
   monthlyCreditLimit,
+  creditPeriod,
   monthlyFee,
   tasks,
   initialTopup,
@@ -26,6 +27,7 @@ export function CreditStatusPanel({
   clientId: string;
   clientName?: string;
   monthlyCreditLimit: number | null;
+  creditPeriod: CreditPeriod;
   monthlyFee: number | null;
   tasks: Pick<Tables<"tasks">, "client_id" | "credit_client_id" | "created_at" | "task_type" | "archived">[];
   initialTopup: Pick<Tables<"credit_topups">, "credits_added"> | null;
@@ -39,7 +41,8 @@ export function CreditStatusPanel({
   // was silently shown as capped at 8).
   const baseLimit = monthlyCreditLimit;
   const limit = baseLimit == null ? null : baseLimit + (topup?.credits_added ?? 0);
-  const used = creditsUsedInMonth(tasks, clientId);
+  const used = creditsUsedInPeriod(tasks, clientId, creditPeriod);
+  const word = periodWord(creditPeriod);
   const pct = limit != null && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const over = limit != null && used > limit;
 
@@ -67,7 +70,7 @@ export function CreditStatusPanel({
     <Card>
       <CardContent className="space-y-3 pt-6">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">{clientName ? `${clientName} — credits` : "Credits this month"}</span>
+          <span className="font-medium">{clientName ? `${clientName} — credits` : `Credits this ${word}`}</span>
           <Badge variant={over ? "destructive" : "secondary"}>
             {limit == null ? `${used} used` : `${used} / ${limit}`}
           </Badge>
@@ -82,9 +85,9 @@ export function CreditStatusPanel({
         )}
 
         {baseLimit == null ? (
-          <p className="text-xs text-muted-foreground">Unlimited credits this month.</p>
+          <p className="text-xs text-muted-foreground">Unlimited credits this {word}.</p>
         ) : topup ? (
-          <Badge variant="secondary">Topped up to {limit} credits this month</Badge>
+          <Badge variant="secondary">Topped up to {limit} credits this {word}</Badge>
         ) : monthlyFee == null ? (
           <p className="text-xs text-muted-foreground">
             Contact your account manager to enable credit top-ups.
@@ -104,19 +107,19 @@ export function CreditStatusPanel({
               </DialogHeader>
               <div className="space-y-4">
                 <p className="text-sm">
-                  Double your credits to <strong>{baseLimit * 2}</strong> for the rest of this
-                  month?
+                  Double your credits to <strong>{baseLimit * 2}</strong> for the rest of this{" "}
+                  {word}?
                 </p>
                 <p className="text-sm text-muted-foreground">
                   <strong>{(monthlyFee * 0.5).toLocaleString()} kr</strong> will be added to your
-                  invoice this month.
+                  invoice this {word}.
                 </p>
                 <div className="flex items-center gap-3">
                   <Button onClick={handleApprove} disabled={loading}>
                     {loading ? "Approving…" : "Approve"}
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    By approving, you agree to a higher invoice from DYOR Studio this month.
+                    By approving, you agree to a higher invoice from DYOR Studio this {word}.
                   </p>
                 </div>
               </div>

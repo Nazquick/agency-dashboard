@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { currentPeriodStart } from "@/lib/analytics/metrics";
+import { asCreditPeriod, currentPeriodStart, periodWord } from "@/lib/analytics/metrics";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   const { data: client } = await admin
     .from("clients")
-    .select("name, group_id, monthly_credit_limit, monthly_fee")
+    .select("name, group_id, monthly_credit_limit, credit_period, monthly_fee")
     .eq("id", clientId)
     .single();
 
@@ -61,7 +61,8 @@ export async function POST(request: Request) {
 
   const baseLimit = client.monthly_credit_limit ?? 8;
   const chargeAmount = Number(client.monthly_fee) * 0.5;
-  const periodStart = currentPeriodStart();
+  const period = asCreditPeriod(client.credit_period);
+  const periodStart = currentPeriodStart(period);
 
   const { data: topup, error } = await admin
     .from("credit_topups")
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
 
   if (error) {
     if (error.code === "23505") {
-      return NextResponse.json({ error: "Already topped up this month" }, { status: 409 });
+      return NextResponse.json({ error: `Already topped up this ${periodWord(period)}` }, { status: 409 });
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

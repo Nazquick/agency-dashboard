@@ -15,6 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Blank stays null ("no limit" / "no fee set"), not 0 — same convention as
 // full-report-form.tsx.
@@ -26,6 +33,7 @@ const clientSchema = z.object({
   description: z.string().optional(),
   group_id: z.string().optional(),
   monthly_credit_limit: optionalNumber(),
+  credit_period: z.enum(["week", "month"]),
   monthly_fee: optionalNumber(),
 });
 
@@ -55,6 +63,7 @@ export function ClientForm({
       description: client?.description ?? "",
       group_id: client?.group_id ?? undefined,
       monthly_credit_limit: client ? (client.monthly_credit_limit ?? undefined) : 8,
+      credit_period: client?.credit_period === "week" ? ("week" as const) : ("month" as const),
       monthly_fee: client?.monthly_fee ?? undefined,
     },
   });
@@ -68,6 +77,7 @@ export function ClientForm({
       description: values.description || null,
       group_id: values.group_id ?? null,
       monthly_credit_limit: values.monthly_credit_limit ?? null,
+      credit_period: values.credit_period,
       monthly_fee: values.monthly_fee ?? null,
     };
 
@@ -126,8 +136,25 @@ export function ClientForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="monthly_credit_limit">Monthly credit limit</Label>
-          <Input id="monthly_credit_limit" type="number" min={0} {...register("monthly_credit_limit")} />
+          <Label htmlFor="monthly_credit_limit">Credit limit</Label>
+          <div className="flex gap-2">
+            <Input id="monthly_credit_limit" type="number" min={0} {...register("monthly_credit_limit")} />
+            <Controller
+              name="credit_period"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-32 shrink-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">per week</SelectItem>
+                    <SelectItem value="month">per month</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="monthly_fee">Monthly fee (kr)</Label>
@@ -135,7 +162,7 @@ export function ClientForm({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Standard credit is 8/month, weighted by content type. Leave the limit blank for no cap. The
+        Standard credit is 8/month, weighted by content type; weekly limits reset every Monday. Leave the limit blank for no cap. The
         monthly fee is required before this client can top up credits from the portal (top-up costs
         50% of it).
       </p>

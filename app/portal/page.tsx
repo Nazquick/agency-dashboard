@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { currentPeriodStart } from "@/lib/analytics/metrics";
+import { asCreditPeriod, currentPeriodStart } from "@/lib/analytics/metrics";
 import { ClientPipelineTable } from "@/components/portal/client-pipeline-table";
 import { CreditStatusPanel } from "@/components/portal/credit-status-panel";
 import type { Tables } from "@/lib/types/database.types";
@@ -32,9 +32,12 @@ export default async function PortalPipelinePage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("clients")
-      .select("id, name, monthly_credit_limit, monthly_fee, is_group_all")
+      .select("id, name, monthly_credit_limit, credit_period, monthly_fee, is_group_all")
       .order("name"),
-    supabase.from("credit_topups").select("client_id, credits_added").eq("period_start", currentPeriodStart()),
+    supabase
+      .from("credit_topups")
+      .select("client_id, period_start, credits_added")
+      .in("period_start", [currentPeriodStart("month"), currentPeriodStart("week")]),
   ]);
 
   const accessibleClients = clients ?? [];
@@ -53,9 +56,16 @@ export default async function PortalPipelinePage() {
             clientId={client.id}
             clientName={realLocations.length > 1 ? client.name : undefined}
             monthlyCreditLimit={client.monthly_credit_limit}
+            creditPeriod={asCreditPeriod(client.credit_period)}
             monthlyFee={client.monthly_fee}
             tasks={allTasks.filter((t) => (t.credit_client_id ?? t.client_id) === client.id)}
-            initialTopup={(topups ?? []).find((t) => t.client_id === client.id) ?? null}
+            initialTopup={
+              (topups ?? []).find(
+                (t) =>
+                  t.client_id === client.id &&
+                  t.period_start === currentPeriodStart(asCreditPeriod(client.credit_period))
+              ) ?? null
+            }
           />
         ))}
       </div>

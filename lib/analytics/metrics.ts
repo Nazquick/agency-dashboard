@@ -80,20 +80,46 @@ export function startOfCurrentMonthIso(): string {
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 }
 
-// "YYYY-MM-01" for the current calendar month, in local time — used to key
-// credit_topups.period_start, so this must match how the server-side
-// top-up route computes it (both use local calendar components, not a
-// UTC-shifted ISO string, which can land on the wrong day near midnight).
-export function currentPeriodStart(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+export type CreditPeriod = "week" | "month";
+
+export function asCreditPeriod(value: string | null | undefined): CreditPeriod {
+  return value === "week" ? "week" : "month";
 }
 
-export function creditsUsedInMonth(
+export function periodWord(period: CreditPeriod): string {
+  return period === "week" ? "week" : "month";
+}
+
+// Weeks run Monday to Sunday.
+function startOfPeriod(period: CreditPeriod): Date {
+  const now = new Date();
+  if (period === "week") {
+    const daysSinceMonday = (now.getDay() + 6) % 7;
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceMonday);
+  }
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+export function startOfPeriodIso(period: CreditPeriod = "month"): string {
+  return startOfPeriod(period).toISOString();
+}
+
+// "YYYY-MM-DD" for the start of the current credit period, in local time —
+// used to key credit_topups.period_start, so this must match how the
+// server-side top-up route computes it (both use local calendar components,
+// not a UTC-shifted ISO string, which can land on the wrong day near
+// midnight).
+export function currentPeriodStart(period: CreditPeriod = "month"): string {
+  const d = startOfPeriod(period);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function creditsUsedInPeriod(
   tasks: Pick<Tables<"tasks">, "client_id" | "credit_client_id" | "created_at" | "task_type" | "archived">[],
-  clientId: string
+  clientId: string,
+  period: CreditPeriod
 ): number {
-  const start = startOfCurrentMonthIso();
+  const start = startOfPeriodIso(period);
   return tasks
     .filter((t) => (t.credit_client_id ?? t.client_id) === clientId && t.created_at >= start && !t.archived)
     .reduce((sum, t) => sum + creditsFor(t.task_type), 0);

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { computeCreditStatus } from "@/lib/analytics/quota";
-import { startOfCurrentMonthIso } from "@/lib/analytics/metrics";
+import { periodWord, startOfPeriodIso } from "@/lib/analytics/metrics";
 import { creditsFor } from "@/lib/tasks/constants";
 import type { Tables } from "@/lib/types/database.types";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,7 @@ type QuotaTask = Pick<
   | "task_type"
   | "archived"
 >;
-type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit">;
+type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit" | "credit_period">;
 type QuotaTopup = Pick<Tables<"credit_topups">, "client_id" | "period_start" | "credits_added">;
 
 // Walk a client's tasks for the month chronologically, accumulating
@@ -103,8 +103,6 @@ export function ClientQuotaPanel({
     return statuses.filter((s) => s.over);
   }, [clients, tasks, topups]);
 
-  const monthStart = startOfCurrentMonthIso();
-
   async function chargeOverage(task: QuotaTask, clientName: string) {
     setChargingId(task.id);
     const supabase = createClient();
@@ -136,16 +134,16 @@ export function ClientQuotaPanel({
   if (overClients.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No clients are over their monthly credit right now.
+        No clients are over their credit right now.
       </p>
     );
   }
 
   return (
     <div className="space-y-6">
-      {overClients.map(({ client, used, limit }) => {
+      {overClients.map(({ client, period, used, limit }) => {
         const clientTasks = tasks.filter((t) => (t.credit_client_id ?? t.client_id) === client.id);
-        const overageIds = overageTaskIds(clientTasks, limit, monthStart);
+        const overageIds = overageTaskIds(clientTasks, limit, startOfPeriodIso(period));
         const overageTasks = clientTasks
           .filter((t) => overageIds.has(t.id))
           .sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -155,7 +153,7 @@ export function ClientQuotaPanel({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium">{client.name}</span>
               <Badge variant="destructive">
-                {used}/{limit} credits this month
+                {used}/{limit} credits this {periodWord(period)}
               </Badge>
             </div>
 

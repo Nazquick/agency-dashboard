@@ -39,7 +39,7 @@ export default async function AdminPage() {
     supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
     supabase
       .from("clients")
-      .select("id, name, monthly_credit_limit")
+      .select("id, name, monthly_credit_limit, credit_period")
       .eq("archived", false)
       .eq("is_group_all", false)
       .order("name"),

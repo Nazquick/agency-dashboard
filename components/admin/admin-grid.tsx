@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type ClientLoginProfile = Pick<Tables<"profiles">, "id" | "full_name" | "client_id">;
-type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit">;
+type QuotaClient = Pick<Tables<"clients">, "id" | "name" | "monthly_credit_limit" | "credit_period">;
 type QuotaTask = Pick<
   Tables<"tasks">,
   | "id"

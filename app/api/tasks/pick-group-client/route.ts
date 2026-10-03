@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeCreditStatus } from "@/lib/analytics/quota";
-import { startOfCurrentMonthIso, currentPeriodStart } from "@/lib/analytics/metrics";
+import { currentPeriodStart, startOfPeriodIso } from "@/lib/analytics/metrics";
 
 // Picks which single location in a client group should actually fulfil a
 // "{Group} (ALL)" task — the first location (alphabetically, a fixed,
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
   const { data: members } = await admin
     .from("clients")
-    .select("id, name, monthly_credit_limit")
+    .select("id, name, monthly_credit_limit, credit_period")
     .eq("group_id", groupId)
     .order("name");
 
@@ -60,20 +60,21 @@ export async function POST(request: Request) {
   }
 
   const memberIds = members.map((m) => m.id);
-  const monthStart = startOfCurrentMonthIso();
+  // A week can begin before the 1st of the month, so fetch from whichever
+  // window opened earlier and let computeCreditStatus apply each client's own.
+  const windowStart = [startOfPeriodIso("month"), startOfPeriodIso("week")].sort()[0];
 
   const { data: tasks } = await admin
     .from("tasks")
     .select("client_id, credit_client_id, created_at, task_type, archived")
     .or(`client_id.in.(${memberIds.join(",")}),credit_client_id.in.(${memberIds.join(",")})`)
-    .gte("created_at", monthStart);
+    .gte("created_at", windowStart);
 
-  const periodStart = currentPeriodStart();
   const { data: topups } = await admin
     .from("credit_topups")
     .select("client_id, period_start, credits_added")
     .in("client_id", memberIds)
-    .eq("period_start", periodStart);
+    .in("period_start", [currentPeriodStart("month"), currentPeriodStart("week")]);
 
   const statuses = computeCreditStatus(members, tasks ?? [], topups ?? []);
   const chosen = statuses.find((s) => s.limit == null || s.used < s.limit) ?? statuses[0];
