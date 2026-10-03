@@ -1597,6 +1597,47 @@ export type Database = {
           },
         ]
       }
+      task_deletions: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          deleted_at: string
+          deleted_by: string | null
+          id: string
+          snapshot: Json | null
+          task_id: string
+          title: string
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          snapshot?: Json | null
+          task_id: string
+          title: string
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          snapshot?: Json | null
+          task_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_deletions_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_steps: {
         Row: {
           created_at: string

@@ -14,6 +14,7 @@ import { AddMemberDialog } from "@/components/team/add-member-dialog";
 import { AdSpendStrategyDownload } from "@/components/admin/ad-spend-strategy-download";
 import { WhitelabelInviteDialog } from "@/components/admin/whitelabel-invite-dialog";
 import { WhitelabelTenantsPanel } from "@/components/admin/whitelabel-tenants-panel";
+import { StoragePanel, type StorageDeletion, type StorageTask } from "@/components/admin/storage-panel";
 import type { WorkloadTask } from "@/components/team/workload-kanban";
 import type { Tables } from "@/lib/types/database.types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,6 +48,7 @@ const SECTIONS = [
   { key: "email-clients", title: "Email all clients", description: "Send a one-off message to every client's primary contact." },
   { key: "email-members", title: "Email all members", description: "Send a one-off message to the whole team." },
   { key: "whitelabel-tenants", title: "White-label tenants", description: "Every dashboard you've handed out, and its status." },
+  { key: "storage", title: "Storage", description: "Every archived and deleted task, including all work from past clients." },
 ] as const;
 
 type SectionKey = (typeof SECTIONS)[number]["key"];
@@ -67,6 +69,8 @@ export function AdminGrid({
   initialCredentials,
   whitelabelTenants,
   whitelabelInvites,
+  archivedTasks,
+  deletedTasks,
 }: {
   clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   quotaClients: QuotaClient[];
@@ -83,6 +87,8 @@ export function AdminGrid({
   initialCredentials: Tables<"client_credentials">[];
   whitelabelTenants: Tables<"whitelabel_tenants">[];
   whitelabelInvites: Tables<"whitelabel_invites">[];
+  archivedTasks: StorageTask[];
+  deletedTasks: StorageDeletion[];
 }) {
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
 
@@ -130,6 +136,8 @@ export function AdminGrid({
         return <EmailBroadcastDialog audience="members" />;
       case "whitelabel-tenants":
         return <WhitelabelTenantsPanel tenants={whitelabelTenants} invites={whitelabelInvites} />;
+      case "storage":
+        return <StoragePanel archivedTasks={archivedTasks} deletedTasks={deletedTasks} />;
     }
   }
 

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isMasterKeyUser } from "@/lib/auth/roles";
 import { AdminGrid } from "@/components/admin/admin-grid";
+import type { StorageDeletion, StorageTask } from "@/components/admin/storage-panel";
 import { flattenTasksByAssignee, type RawTaskRow } from "@/lib/tasks/assignees";
 
 export default async function AdminPage() {
@@ -32,6 +33,8 @@ export default async function AdminPage() {
     { data: credentials },
     { data: whitelabelTenants },
     { data: whitelabelInvites },
+    { data: archivedTasks },
+    { data: deletedTasks },
   ] = await Promise.all([
     supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
     supabase
@@ -62,6 +65,17 @@ export default async function AdminPage() {
     supabase.from("client_credentials").select("*").order("platform"),
     supabase.from("whitelabel_tenants").select("*").order("created_at", { ascending: false }),
     supabase.from("whitelabel_invites").select("*").order("created_at", { ascending: false }),
+    supabase
+      .from("tasks")
+      .select(
+        "id, title, description, status, priority, task_type, deadline, created_at, updated_at, client:clients!tasks_client_id_fkey(id, name), assignee:profiles!tasks_assignee_id_fkey(full_name)"
+      )
+      .eq("archived", true)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("task_deletions")
+      .select("*, deleter:profiles(full_name)")
+      .order("deleted_at", { ascending: false }),
   ]);
 
   const salaryTotal = (salaries ?? []).reduce((sum, s) => sum + Number(s.monthly_salary), 0);
@@ -89,6 +103,8 @@ export default async function AdminPage() {
         initialCredentials={credentials ?? []}
         whitelabelTenants={whitelabelTenants ?? []}
         whitelabelInvites={whitelabelInvites ?? []}
+        archivedTasks={(archivedTasks ?? []) as unknown as StorageTask[]}
+        deletedTasks={(deletedTasks ?? []) as unknown as StorageDeletion[]}
       />
     </div>
   );
