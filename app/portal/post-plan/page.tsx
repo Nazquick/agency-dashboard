@@ -19,10 +19,17 @@ export default async function PortalPostPlanPage() {
 
   // No explicit client filter — RLS (social_posts_select) already scopes
   // this to only the posts tagged to whatever this account can access.
-  const { data: posts } = await supabase
-    .from("social_posts")
-    .select("*, client:clients(id, name), social_post_credits(profile:profiles(id, full_name))")
-    .order("post_at");
+  const [{ data: posts }, { data: clients }] = await Promise.all([
+    supabase
+      .from("social_posts")
+      .select("*, client:clients(id, name), social_post_credits(profile:profiles(id, full_name))")
+      .order("post_at"),
+    supabase.from("clients").select("name").eq("is_group_all", false),
+  ]);
+
+  // A single-location account gets its client's colour; a master account
+  // spanning several locations has no single colour to show.
+  const themeClientName = clients?.length === 1 ? clients[0].name : undefined;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -38,6 +45,7 @@ export default async function PortalPostPlanPage() {
           (posts ?? []) as unknown as Parameters<typeof flattenPostCredits>[0]
         )}
         readOnly
+        themeClientName={themeClientName}
       />
     </div>
   );

@@ -6,12 +6,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRealtimeClient } from "@/lib/supabase/realtime-client";
 import { MEDIA_TYPES, mediaTypeHex, mediaTypeLabel, platformLabel } from "@/lib/social-posts/constants";
 import { flattenPostCredits } from "@/lib/social-posts/flatten";
+import { clientThemeFor } from "@/lib/social-posts/client-themes";
 import { CreatePostDialog, type PostWithRelations } from "@/components/social-posts/create-post-dialog";
 import { PostViewDialog } from "@/components/social-posts/post-view-dialog";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
+const ALL_CLIENTS = "__all__";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function startOfMonth(d: Date): Date {
@@ -46,15 +55,24 @@ export function PostPlanCalendar({
   clients = [],
   readOnly = false,
   defaultClientId,
+  themeClientName: fixedThemeClientName,
 }: {
   initialPosts: PostWithRelations[];
   profiles?: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   clients?: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   readOnly?: boolean;
   defaultClientId?: string;
+  // For views with no client picker (the client portal), which client's colour to use.
+  themeClientName?: string;
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedClientId, setSelectedClientId] = useState(ALL_CLIENTS);
+
+  // The client-specific page already scopes itself to one client; the
+  // team-wide page lets the user pick one with the dropdown.
+  const showClientFilter = !readOnly && !defaultClientId && clients.length > 0;
+  const activeClientId = defaultClientId ?? (selectedClientId === ALL_CLIENTS ? undefined : selectedClientId);
 
   useEffect(() => {
     let supabase: SupabaseClient;
@@ -94,9 +112,16 @@ export function PostPlanCalendar({
 
   const grid = useMemo(() => buildGrid(month), [month]);
 
+  const visiblePosts = useMemo(
+    () => (activeClientId ? posts.filter((p) => p.client?.id === activeClientId) : posts),
+    [posts, activeClientId]
+  );
+
+  const theme = clientThemeFor(clients.find((c) => c.id === activeClientId)?.name ?? fixedThemeClientName);
+
   const postsByDay = useMemo(() => {
     const map = new Map<string, PostWithRelations[]>();
-    for (const p of posts) {
+    for (const p of visiblePosts) {
       const key = new Date(p.post_at).toDateString();
       const list = map.get(key) ?? [];
       list.push(p);
@@ -106,7 +131,7 @@ export function PostPlanCalendar({
       list.sort((a, b) => new Date(a.post_at).getTime() - new Date(b.post_at).getTime());
     }
     return map;
-  }, [posts]);
+  }, [visiblePosts]);
 
   // Per-client post counts for the month currently in view — only
   // meaningful on the team-wide page (a single-client page/portal view
@@ -146,7 +171,28 @@ export function PostPlanCalendar({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {showClientFilter && (
+            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+              <SelectTrigger className="w-44" aria-label="Filter by client">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_CLIENTS}>All clients</SelectItem>
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full bg-muted-foreground/30"
+                        style={{ backgroundColor: clientThemeFor(c.name)?.hex }}
+                      />
+                      {c.name.trim()}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button variant="outline" size="icon-sm" onClick={() => setMonth((m) => addMonths(m, -1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -170,8 +216,17 @@ export function PostPlanCalendar({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <div className="grid grid-cols-7 border-b bg-muted/40 text-xs font-medium text-muted-foreground">
+      <div
+        className="overflow-hidden rounded-lg border bg-card transition-colors duration-300"
+        style={theme ? { borderColor: `${theme.hex}80` } : undefined}
+      >
+        <div
+          className={cn(
+            "grid grid-cols-7 border-b text-xs font-medium text-muted-foreground transition-colors duration-300",
+            !theme && "bg-muted/40"
+          )}
+          style={theme ? { backgroundColor: `${theme.hex}4d`, borderColor: `${theme.hex}80` } : undefined}
+        >
           {WEEKDAYS.map((w) => (
             <div key={w} className="px-2 py-2 text-center">
               {w}
@@ -187,17 +242,24 @@ export function PostPlanCalendar({
               <div
                 key={i}
                 className={cn(
-                  "min-h-28 border-b border-r p-1.5",
-                  !inMonth && "bg-muted/20 text-muted-foreground",
+                  "min-h-28 border-b border-r p-1.5 transition-colors duration-300",
+                  !inMonth && "text-muted-foreground",
+                  !inMonth && !theme && "bg-muted/20",
                   (i + 1) % 7 === 0 && "border-r-0"
                 )}
+                style={
+                  theme
+                    ? { backgroundColor: `${theme.hex}${inMonth ? "2e" : "14"}`, borderColor: `${theme.hex}66` }
+                    : undefined
+                }
               >
                 <div className="mb-1 flex items-center justify-between">
                   <span
                     className={cn(
                       "flex h-5 w-5 items-center justify-center rounded-full text-xs",
-                      isToday && "bg-primary text-primary-foreground"
+                      isToday && !theme && "bg-primary text-primary-foreground"
                     )}
+                    style={isToday && theme ? { backgroundColor: theme.hex, color: theme.onAccent } : undefined}
                   >
                     {day.getDate()}
                   </span>
@@ -206,7 +268,7 @@ export function PostPlanCalendar({
                       profiles={profiles}
                       clients={clients}
                       defaultDate={new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0)}
-                      defaultClientId={defaultClientId}
+                      defaultClientId={activeClientId}
                       trigger={
                         <button
                           type="button"
@@ -245,7 +307,7 @@ export function PostPlanCalendar({
                         post={p}
                         profiles={profiles}
                         clients={clients}
-                        defaultClientId={defaultClientId}
+                        defaultClientId={activeClientId}
                         trigger={chip}
                         onSuccess={mergeUpdatedPost}
                         onDelete={(id) => setPosts((prev) => prev.filter((post) => post.id !== id))}
@@ -259,7 +321,7 @@ export function PostPlanCalendar({
         </div>
       </div>
 
-      {!readOnly && !defaultClientId && (
+      {!readOnly && !activeClientId && (
         <div className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold">
             Posts per client — {month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
