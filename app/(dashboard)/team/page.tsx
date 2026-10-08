@@ -14,6 +14,7 @@ export default async function TeamPage() {
     { data: proposals },
     { data: tasks },
     { data: roleRequests },
+    { data: sessions },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -48,7 +49,19 @@ export default async function TeamPage() {
       )
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
+    // RLS limits this to the admin's view of everyone (everyone else only
+    // sees their own rows), so last-login is only shown to the admin.
+    supabase
+      .from("user_sessions")
+      .select("user_id, last_seen_at")
+      .order("last_seen_at", { ascending: false })
+      .limit(300),
   ]);
+
+  const lastSeenByMember: Record<string, string> = {};
+  for (const s of sessions ?? []) {
+    if (!(s.user_id in lastSeenByMember)) lastSeenByMember[s.user_id] = s.last_seen_at;
+  }
 
   return (
     <TeamGrid
@@ -58,6 +71,7 @@ export default async function TeamPage() {
       initialProposals={(proposals ?? []) as unknown as MeetupProposalWithResponses[]}
       tasks={flattenTasksByAssignee((tasks ?? []) as unknown as RawTaskRow[])}
       initialRoleRequests={(roleRequests ?? []) as unknown as RoleChangeRequestWithRelations[]}
+      lastSeenByMember={lastSeenByMember}
     />
   );
 }

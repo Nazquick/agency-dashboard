@@ -294,7 +294,7 @@ export function PostPlanCalendar({
                     const chip = (
                       <button
                         type="button"
-                        className="block w-full truncate rounded px-1.5 py-0.5 text-left text-xs font-medium"
+                        className="block w-full overflow-hidden rounded px-1.5 py-0.5 text-left text-xs font-medium"
                         style={{
                           backgroundColor: `${mediaTypeHex(p.media_type)}22`,
                           color: mediaTypeHex(p.media_type),
@@ -307,8 +307,10 @@ export function PostPlanCalendar({
                             {p.client.name.trim()}
                           </span>
                         )}
-                        {formatTime(new Date(p.post_at), { hour: "numeric", minute: "2-digit" })}{" "}
-                        {p.caption || platformLabel(p.platform)}
+                        <span className="line-clamp-2 break-words">
+                          {formatTime(new Date(p.post_at), { hour: "numeric", minute: "2-digit" })}{" "}
+                          {p.caption || platformLabel(p.platform)}
+                        </span>
                       </button>
                     );
                     return readOnly ? (

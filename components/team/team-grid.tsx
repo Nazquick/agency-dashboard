@@ -24,6 +24,7 @@ export function TeamGrid({
   initialProposals,
   tasks,
   initialRoleRequests,
+  lastSeenByMember,
 }: {
   initialMembers: Tables<"profiles">[];
   initialDeactivatedMembers: Tables<"profiles">[];
@@ -31,11 +32,17 @@ export function TeamGrid({
   initialProposals: MeetupProposalWithResponses[];
   tasks: WorkloadTask[];
   initialRoleRequests: RoleChangeRequestWithRelations[];
+  lastSeenByMember: Record<string, string>;
 }) {
   const actor = useUser();
   const roles = useRoles();
   const [members, setMembers] = useState(initialMembers);
   const [deactivatedMembers, setDeactivatedMembers] = useState(initialDeactivatedMembers);
+  const isAdmin = isMasterKeyUser(actor.email);
+  const activeTaskCounts = new Map<string, number>();
+  for (const t of tasks) {
+    if (t.assignee) activeTaskCounts.set(t.assignee.id, (activeTaskCounts.get(t.assignee.id) ?? 0) + 1);
+  }
   const internalMembers = members.filter((m) => !m.is_external);
   const externalMembers = members.filter((m) => m.is_external);
   const profiles = members.map((m) => ({
@@ -68,7 +75,7 @@ export function TeamGrid({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
           <p className="text-sm text-muted-foreground">
-            Everyone with access to the dashboard.
+            Everyone with access to the dashboard — their workload, role and activity.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -96,6 +103,8 @@ export function TeamGrid({
               member={member}
               clients={clients}
               profiles={profiles}
+              activeTaskCount={activeTaskCounts.get(member.id) ?? 0}
+              lastSeenAt={isAdmin ? (lastSeenByMember[member.id] ?? null) : undefined}
               onUpdate={handleUpdate}
               onRemoved={handleRemoved}
             />
@@ -118,6 +127,7 @@ export function TeamGrid({
                 member={member}
                 clients={clients}
                 profiles={profiles}
+                activeTaskCount={activeTaskCounts.get(member.id) ?? 0}
                 onUpdate={handleUpdate}
                 onRemoved={handleRemoved}
               />

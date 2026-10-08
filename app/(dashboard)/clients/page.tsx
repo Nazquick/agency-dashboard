@@ -57,7 +57,15 @@ export default async function ClientsPage() {
                   <img
                     src={client.coverUrl}
                     alt=""
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-50"
+                    aria-hidden
+                  />
+                )}
+                {client.coverUrl && (
+                  // Scrim: whatever the photo is, the title and description sit on a
+                  // solid-enough card colour to stay readable in light and dark mode.
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card via-card/90 to-card/60"
                     aria-hidden
                   />
                 )}

@@ -262,6 +262,12 @@ export function CalendarView({
             onNavigate={setDate}
             views={["month", "week", "day"]}
             components={{ event: CalendarEventContent }}
+            tooltipAccessor={(event) => {
+              const e = event.resource;
+              return [event.title, formatRange(e.starts_at, e.ends_at), e.client?.name, e.assignee?.full_name]
+                .filter(Boolean)
+                .join("\n");
+            }}
             eventPropGetter={(event) => {
               const e = event.resource;
               return {

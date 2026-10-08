@@ -3,6 +3,7 @@
 import { Phone, MessageSquare, Mail, ListPlus, Pencil } from "lucide-react";
 import { useUser, useRoles } from "@/components/providers/user-provider";
 import { roleLabel } from "@/lib/auth/roles";
+import { formatDateTime } from "@/lib/format/datetime";
 import { colorForId } from "@/lib/colors";
 import { TaskForm } from "@/components/pipeline/task-form";
 import { EditMemberDialog } from "@/components/team/edit-member-dialog";
@@ -26,10 +27,15 @@ export function TeamMemberCard({
   member,
   clients,
   profiles,
+  activeTaskCount,
+  lastSeenAt,
   onUpdate,
   onRemoved,
 }: {
   member: Tables<"profiles">;
+  activeTaskCount: number;
+  // undefined = not visible to the viewer; null = admin viewing, never signed in.
+  lastSeenAt?: string | null;
   clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
   profiles: Pick<Tables<"profiles">, "id" | "full_name" | "role" | "is_external">[];
   onUpdate: (member: Tables<"profiles">) => void;
@@ -74,6 +80,17 @@ export function TeamMemberCard({
             {hasPhone && (
               <p className="truncate text-sm text-muted-foreground">{member.phone}</p>
             )}
+            <p className="mt-1 text-xs text-muted-foreground">
+              {activeTaskCount} active task{activeTaskCount === 1 ? "" : "s"}
+              {!member.is_external && lastSeenAt !== undefined && (
+                <>
+                  {" · "}
+                  {lastSeenAt
+                    ? `Last seen ${formatDateTime(lastSeenAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+                    : "Never signed in"}
+                </>
+              )}
+            </p>
           </div>
         </div>
 

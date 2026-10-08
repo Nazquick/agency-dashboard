@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser, useRoles } from "@/components/providers/user-provider";
 import { NavBadge } from "@/components/nav/nav-badge";
@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { BASE_TABS, ADMIN_TAB, CAMPAIGNS_TAB } from "@/lib/nav/items";
+import { buildNav, type NavLinkItem } from "@/lib/nav/items";
 
 function initials(name: string) {
   return name
@@ -34,6 +34,14 @@ function initials(name: string) {
     .join("")
     .toUpperCase();
 }
+
+function isItemActive(pathname: string, item: NavLinkItem) {
+  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
+// Badges are absolutely positioned for flat tabs; inside a group trigger or
+// menu row they sit inline instead.
+const INLINE_BADGES = "ml-1.5 inline-flex gap-0.5 [&>span]:static [&>span]:ml-0";
 
 export function TopTabs() {
   const pathname = usePathname();
@@ -49,7 +57,7 @@ export function TopTabs() {
     setMobileOpen(false);
   }
 
-  const tabs = isMasterKeyUser(profile.email) ? [...BASE_TABS, CAMPAIGNS_TAB, ADMIN_TAB] : BASE_TABS;
+  const nav = buildNav(isMasterKeyUser(profile.email));
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -65,7 +73,7 @@ export function TopTabs() {
           <Button
             variant="ghost"
             size="icon"
-            className="size-9 md:hidden"
+            className="size-9 lg:hidden"
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((v) => !v)}
@@ -78,29 +86,67 @@ export function TopTabs() {
               Agency Dashboard
             </span>
           </div>
-          <nav className="hidden items-center gap-1 md:flex">
-            {tabs.map((tab) => {
-              const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+          <nav className="hidden items-center gap-1 lg:flex">
+            {nav.map((entry) => {
+              if (entry.type === "link") {
+                const isActive = isItemActive(pathname, entry.item);
+                return (
+                  <Link
+                    key={entry.item.href}
+                    href={entry.item.href}
+                    className={cn(
+                      "relative whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-secondary text-secondary-foreground"
+                        : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                    )}
+                  >
+                    {entry.item.label}
+                    <NavBadge href={entry.item.href} />
+                  </Link>
+                );
+              }
+              const isActive = entry.items.some((item) => isItemActive(pathname, item));
               return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
-                  className={cn(
-                    "relative whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                  )}
-                >
-                  {tab.label}
-                  <NavBadge href={tab.href} />
-                </Link>
+                <DropdownMenu key={entry.label}>
+                  <DropdownMenuTrigger
+                    className={cn(
+                      "flex items-center whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                      isActive
+                        ? "bg-secondary text-secondary-foreground"
+                        : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                    )}
+                  >
+                    {entry.label}
+                    <span className={INLINE_BADGES}>
+                      {entry.items.map((item) => (
+                        <NavBadge key={item.href} href={item.href} />
+                      ))}
+                    </span>
+                    <ChevronDown className="ml-1 size-3.5 opacity-60" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-44">
+                    {entry.items.map((item) => (
+                      <DropdownMenuItem key={item.href} asChild>
+                        <Link
+                          href={item.href}
+                          className={cn("flex items-center", isItemActive(pathname, item) && "bg-secondary")}
+                        >
+                          {item.label}
+                          <span className={INLINE_BADGES}>
+                            <NavBadge href={item.href} />
+                          </span>
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               );
             })}
           </nav>
         </div>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -133,24 +179,33 @@ export function TopTabs() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t bg-background px-4 pb-4 md:hidden">
+        <div className="max-h-[calc(100vh-4rem)] overflow-y-auto border-t bg-background px-4 pb-4 lg:hidden">
           <nav className="flex flex-col gap-1 pt-2">
-            {tabs.map((tab) => {
-              const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+            {nav.map((entry) => {
+              const items = entry.type === "link" ? [entry.item] : entry.items;
               return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
-                  className={cn(
-                    "relative flex items-center whitespace-nowrap rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                <div key={entry.type === "link" ? entry.item.href : entry.label} className="flex flex-col gap-1">
+                  {entry.type === "group" && (
+                    <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {entry.label}
+                    </p>
                   )}
-                >
-                  {tab.label}
-                  <NavBadge href={tab.href} />
-                </Link>
+                  {items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "relative flex items-center whitespace-nowrap rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                        isItemActive(pathname, item)
+                          ? "bg-secondary text-secondary-foreground"
+                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                      )}
+                    >
+                      {item.label}
+                      <NavBadge href={item.href} />
+                    </Link>
+                  ))}
+                </div>
               );
             })}
           </nav>

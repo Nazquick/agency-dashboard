@@ -50,6 +50,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+const UNDO_TOAST_MS = 8000;
 const ALL = "__all__";
 const ME = "__me__";
 const NONE = "__none__";
@@ -268,7 +269,11 @@ export function PipelineBoard({
     });
   }
 
-  async function handleStatusChange(task: TaskWithRelations, status: TaskStatus) {
+  async function handleStatusChange(
+    task: TaskWithRelations,
+    status: TaskStatus,
+    options?: { isUndo?: boolean }
+  ) {
     const supabase = createClient();
     const { error } = await supabase.from("tasks").update({ status }).eq("id", task.id);
     if (error) {
@@ -276,6 +281,12 @@ export function PipelineBoard({
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status } : t)));
+    if (!options?.isUndo) {
+      toast(`"${task.title}" moved to ${statusLabel(status)}`, {
+        duration: UNDO_TOAST_MS,
+        action: { label: "Undo", onClick: () => handleStatusChange(task, task.status, { isUndo: true }) },
+      });
+    }
     logActivity(supabase, {
       actorId: profile.id,
       action: status === "done" ? "task_completed" : "task_status_changed",
@@ -350,10 +361,72 @@ export function PipelineBoard({
         t.id === task.id ? mergeUpdatedTask(data, t.assignees.map((a) => a.id)) : t
       )
     );
+    toast(`Changed client on "${task.title}"`, {
+      duration: UNDO_TOAST_MS,
+      action: { label: "Undo", onClick: () => restoreClient(task) },
+    });
     logActivity(supabase, {
       actorId: profile.id,
       action: "task_updated",
       summary: `Changed client on task "${task.title}"`,
+      entityType: "task",
+      entityId: task.id,
+    });
+  }
+
+  // Undo for the inline client dropdown: put back the exact client and the
+  // credit client it had, without re-running the group credit picker.
+  async function restoreClient(task: TaskWithRelations) {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ client_id: task.client_id, credit_client_id: task.credit_client_id })
+      .eq("id", task.id)
+      .select()
+      .single();
+    if (error || !data) {
+      toast.error(error?.message ?? "Couldn't undo the client change");
+      return;
+    }
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? mergeUpdatedTask(data, t.assignees.map((a) => a.id)) : t))
+    );
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "task_updated",
+      summary: `Undid client change on task "${task.title}"`,
+      entityType: "task",
+      entityId: task.id,
+    });
+  }
+
+  // Undo for the inline assignee dropdown: restore every previous assignee,
+  // not just the primary one.
+  async function restoreAssignees(task: TaskWithRelations) {
+    const supabase = createClient();
+    const previousIds = task.assignees.map((a) => a.id);
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ assignee_id: task.assignee_id })
+      .eq("id", task.id)
+      .select()
+      .single();
+    if (error || !data) {
+      toast.error(error?.message ?? "Couldn't undo the reassignment");
+      return;
+    }
+    await supabase.from("task_assignees").delete().eq("task_id", task.id);
+    if (previousIds.length > 0) {
+      const { error: assigneeError } = await supabase
+        .from("task_assignees")
+        .insert(previousIds.map((profile_id) => ({ task_id: task.id, profile_id })));
+      if (assigneeError) toast.error(`Assignees not restored: ${assigneeError.message}`);
+    }
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeUpdatedTask(data, previousIds) : t)));
+    logActivity(supabase, {
+      actorId: profile.id,
+      action: "task_updated",
+      summary: `Undid reassignment on task "${task.title}"`,
       entityType: "task",
       entityId: task.id,
     });
@@ -381,6 +454,14 @@ export function PipelineBoard({
       if (assigneeError) toast.error(`Assignee not saved: ${assigneeError.message}`);
     }
     setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeUpdatedTask(data, newAssigneeIds) : t)));
+    toast(
+      `"${task.title}" ${
+        newAssigneeId
+          ? `assigned to ${profiles.find((p) => p.id === newAssigneeId)?.full_name ?? "someone"}`
+          : "unassigned"
+      }`,
+      { duration: UNDO_TOAST_MS, action: { label: "Undo", onClick: () => restoreAssignees(task) } }
+    );
     logActivity(supabase, {
       actorId: profile.id,
       action: "task_updated",
@@ -629,11 +710,11 @@ export function PipelineBoard({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Color</TableHead>
-                        <TableHead>Title</TableHead>
+                        <TableHead className="w-px whitespace-nowrap">Color</TableHead>
+                        <TableHead className="sticky left-0 z-10 bg-card">Title</TableHead>
                         {showClientColumn && <TableHead>Client</TableHead>}
                         <TableHead>Assignee</TableHead>
-                        <TableHead>Priority</TableHead>
+                        <TableHead className="hidden xl:table-cell">Priority</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Approval</TableHead>
                         <TableHead>Deadline</TableHead>
@@ -700,7 +781,7 @@ export function PipelineBoard({
             </button>
           )}
         </TableCell>
-        <TableCell className="font-medium">
+        <TableCell className="sticky left-0 z-10 bg-card font-medium">
           <div
             role="button"
             tabIndex={0}
@@ -761,7 +842,7 @@ export function PipelineBoard({
             value={task.assignee_id ?? NONE}
             onValueChange={(v) => handleAssigneeChange(task, v)}
           >
-            <SelectTrigger className="h-8 w-36">
+            <SelectTrigger className="h-8 w-32 xl:w-36">
               <SelectValue placeholder="Unassigned" />
             </SelectTrigger>
             <SelectContent>
@@ -795,7 +876,7 @@ export function PipelineBoard({
             </div>
           )}
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden xl:table-cell">
           <Badge className={PRIORITY_BADGE_CLASS[task.priority as TaskPriority]}>
             {priorityLabel(task.priority as TaskPriority)}
           </Badge>
@@ -805,7 +886,7 @@ export function PipelineBoard({
             value={task.status}
             onValueChange={(v) => handleStatusChange(task, v as TaskStatus)}
           >
-            <SelectTrigger className="h-8 w-36">
+            <SelectTrigger className="h-8 w-32 xl:w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
