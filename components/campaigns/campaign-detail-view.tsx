@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate as formatAppDate } from "@/lib/format/datetime";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Download, Pencil } from "lucide-react";
@@ -22,7 +23,7 @@ function formatCurrency(value: number | null): string {
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  return formatAppDate(new Date(value), { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -116,7 +117,7 @@ export function CampaignDetailView({
           <Field label="Publication date" value={formatDate(campaign.publication_date)} />
           <Field
             label="Created"
-            value={new Date(campaign.created_at).toLocaleDateString(undefined, {
+            value={formatAppDate(new Date(campaign.created_at), {
               month: "short",
               day: "numeric",
               year: "numeric",

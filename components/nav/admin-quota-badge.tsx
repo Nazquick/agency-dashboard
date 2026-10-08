@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { computeCreditStatus } from "@/lib/analytics/quota";
 
 export function AdminQuotaBadge() {
@@ -33,8 +33,10 @@ export function AdminQuotaBadge() {
 
       await refreshCount();
 
+      if (cancelled) return;
+
       channel = supabase
-        .channel("admin-quota-badge")
+        .channel(uniqueChannelName("admin-quota-badge"))
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refreshCount)
         .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, refreshCount)
         .on("postgres_changes", { event: "*", schema: "public", table: "credit_topups" }, refreshCount)

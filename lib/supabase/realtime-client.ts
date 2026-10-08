@@ -14,3 +14,13 @@ export async function createRealtimeClient() {
   }
   return supabase;
 }
+
+// supabase-js hands back the *existing* channel when asked for a topic it
+// already has, and removeChannel() is asynchronous — so a remounted
+// component (React Strict Mode, a fast back-navigation) can be given the
+// previous, already-subscribed channel and .on() then throws "cannot add
+// postgres_changes callbacks ... after subscribe()". A fresh name per
+// subscription makes that impossible. Only call this inside an effect.
+export function uniqueChannelName(base: string): string {
+  return `${base}-${Math.random().toString(36).slice(2, 10)}`;
+}

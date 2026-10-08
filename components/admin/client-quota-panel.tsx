@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { computeCreditStatus } from "@/lib/analytics/quota";
 import { periodWord, startOfPeriodIso } from "@/lib/analytics/metrics";
@@ -84,7 +84,7 @@ export function ClientQuotaPanel({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       channel = supabase
-        .channel("client-quota-panel")
+        .channel(uniqueChannelName("client-quota-panel"))
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "credit_topups" }, refetch)
         .subscribe();

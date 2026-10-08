@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
@@ -72,8 +72,9 @@ export function TaskAttachments({ taskId, taskTitle }: { taskId: string; taskTit
       supabase = await createRealtimeClient();
       if (cancelled) return;
       await refetch();
+      if (cancelled) return;
       channel = supabase
-        .channel(`task-attachments-${taskId}`)
+        .channel(uniqueChannelName(`task-attachments-${taskId}`))
         .on("postgres_changes", { event: "*", schema: "public", table: "task_attachments" }, refetch)
         .subscribe();
     }

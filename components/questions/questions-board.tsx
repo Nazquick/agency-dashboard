@@ -1,10 +1,11 @@
 "use client";
 
+import { formatDateTime } from "@/lib/format/datetime";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
@@ -29,7 +30,7 @@ export type QuestionWithClient = Tables<"client_questions"> & {
 };
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(new Date(value), {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -128,7 +129,7 @@ export function QuestionsBoard({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       channel = supabase
-        .channel(`client-questions-board-${defaultClientId ?? "all"}`)
+        .channel(uniqueChannelName(`client-questions-board-${defaultClientId ?? "all"}`))
         .on("postgres_changes", { event: "*", schema: "public", table: "client_questions" }, refetch)
         .subscribe();
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate as formatAppDate } from "@/lib/format/datetime";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/types/database.types";
@@ -24,7 +25,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 function formatDate(value: string | null) {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString(undefined, {
+  return formatAppDate(new Date(value), {
     month: "short",
     day: "numeric",
     year: "numeric",

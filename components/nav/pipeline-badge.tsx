@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
 
@@ -41,8 +41,10 @@ export function PipelineBadge() {
 
       await refreshCount();
 
+      if (cancelled) return;
+
       channel = supabase
-        .channel("tasks-badge")
+        .channel(uniqueChannelName("tasks-badge"))
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refreshCount)
         .on("postgres_changes", { event: "*", schema: "public", table: "task_assignees" }, refreshCount)
         .subscribe();

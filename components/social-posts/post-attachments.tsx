@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
@@ -73,8 +73,9 @@ export function PostAttachments({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       await refetch();
+      if (cancelled) return;
       channel = supabase
-        .channel(`post-attachments-${postId}`)
+        .channel(uniqueChannelName(`post-attachments-${postId}`))
         .on("postgres_changes", { event: "*", schema: "public", table: "social_post_attachments" }, refetch)
         .subscribe();
     }

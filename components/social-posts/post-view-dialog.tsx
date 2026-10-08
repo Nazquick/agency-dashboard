@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateTime } from "@/lib/format/datetime";
 import { useState } from "react";
 import { mediaTypeBadgeClass, mediaTypeLabel, platformLabel, postTypeLabel } from "@/lib/social-posts/constants";
 import { PostAttachments } from "@/components/social-posts/post-attachments";
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 
 function formatPostAt(value: string): string {
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(new Date(value), {
     weekday: "short",
     month: "short",
     day: "numeric",

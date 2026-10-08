@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 
 export function QuestionsBadge() {
   const [count, setCount] = useState<number | null>(null);
@@ -26,8 +26,10 @@ export function QuestionsBadge() {
 
       await refreshCount();
 
+      if (cancelled) return;
+
       channel = supabase
-        .channel("client-questions-badge")
+        .channel(uniqueChannelName("client-questions-badge"))
         .on("postgres_changes", { event: "*", schema: "public", table: "client_questions" }, refreshCount)
         .subscribe();
     }

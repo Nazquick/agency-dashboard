@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 
 export function BountiesBadge() {
   const [count, setCount] = useState<number | null>(null);
@@ -26,8 +26,9 @@ export function BountiesBadge() {
       supabase = await createRealtimeClient();
       if (cancelled) return;
       await refreshCount();
+      if (cancelled) return;
       channel = supabase
-        .channel("bounties-badge")
+        .channel(uniqueChannelName("bounties-badge"))
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refreshCount)
         .subscribe();
     }

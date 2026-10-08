@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/lib/format/datetime";
 import { createClient } from "@/lib/supabase/server";
 import { eventTypeLabel, type EventType } from "@/lib/calendar/constants";
 import { priorityLabel, type TaskPriority } from "@/lib/tasks/constants";
@@ -13,7 +14,7 @@ type UpcomingItem = {
 };
 
 function formatWhen(value: string) {
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(new Date(value), {
     weekday: "short",
     month: "short",
     day: "numeric",

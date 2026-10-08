@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate } from "@/lib/format/datetime";
 import { useMemo } from "react";
 import { Check } from "lucide-react";
 import { MEDIA_TYPES } from "@/lib/social-posts/constants";
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils";
 export const WEEKLY_POST_TARGET = 4;
 
 function formatDay(d: Date): string {
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return formatDate(d, { day: "numeric", month: "short" });
 }
 
 // `grid` is the calendar's Monday-start 6x7 day grid, so each slice of 7 is
@@ -27,7 +28,7 @@ export function ClientPostKpis({
   grid: Date[];
   theme: ClientTheme | null;
 }) {
-  const monthLabel = month.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = formatDate(month, { month: "long", year: "numeric" });
 
   const typeCounts = useMemo(() => {
     const counts = new Map<string, number>();

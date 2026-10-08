@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate, formatTime } from "@/lib/format/datetime";
 import { useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer, type View, type SlotInfo } from "react-big-calendar";
 import withDragAndDrop, { type EventInteractionArgs } from "react-big-calendar/lib/addons/dragAndDrop";
@@ -74,7 +75,7 @@ function formatRange(startsAt: string, endsAt: string) {
   const end = new Date(endsAt);
   const dateFmt: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   const timeFmt: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
-  return `${start.toLocaleDateString(undefined, dateFmt)}, ${start.toLocaleTimeString(undefined, timeFmt)}–${end.toLocaleTimeString(undefined, timeFmt)}`;
+  return `${formatDate(start, dateFmt)}, ${formatTime(start, timeFmt)}–${formatTime(end, timeFmt)}`;
 }
 
 export function CalendarView({

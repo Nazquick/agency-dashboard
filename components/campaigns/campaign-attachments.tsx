@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { logActivity } from "@/lib/activity/log";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/tasks/constants";
@@ -67,8 +67,9 @@ export function CampaignAttachments({ campaignId, campaignLabel }: { campaignId:
       supabase = await createRealtimeClient();
       if (cancelled) return;
       await refetch();
+      if (cancelled) return;
       channel = supabase
-        .channel(`campaign-attachments-${campaignId}`)
+        .channel(uniqueChannelName(`campaign-attachments-${campaignId}`))
         .on("postgres_changes", { event: "*", schema: "public", table: "campaign_attachments" }, refetch)
         .subscribe();
     }

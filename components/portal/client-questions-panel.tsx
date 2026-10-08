@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateTime } from "@/lib/format/datetime";
 import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +8,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { logActivity } from "@/lib/activity/log";
 import type { Tables } from "@/lib/types/database.types";
@@ -32,7 +33,7 @@ const askSchema = z.object({
 type AskFormValues = z.infer<typeof askSchema>;
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(new Date(value), {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -83,7 +84,7 @@ export function ClientQuestionsPanel({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       channel = supabase
-        .channel("client-questions-portal")
+        .channel(uniqueChannelName("client-questions-portal"))
         .on("postgres_changes", { event: "*", schema: "public", table: "client_questions" }, refetch)
         .subscribe();
     }

@@ -1,10 +1,11 @@
 "use client";
 
+import { formatDateTime } from "@/lib/format/datetime";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import {
   PRIORITY_BADGE_CLASS,
@@ -33,7 +34,7 @@ function startOfToday(): Date {
 }
 
 function formatDeadline(value: string): string {
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(new Date(value), {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -84,7 +85,7 @@ export function MyDayBoard({
       if (cancelled) return;
 
       channel = supabase
-        .channel("my-day-board")
+        .channel(uniqueChannelName("my-day-board"))
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "task_assignees" }, refetch)
         .subscribe();

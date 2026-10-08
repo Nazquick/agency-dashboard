@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { isMasterKeyUser } from "@/lib/auth/roles";
 import { activityLabel, formatDuration } from "@/lib/activity/constants";
@@ -76,7 +76,7 @@ export function ClientActivityPanel({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       channel = supabase
-        .channel("client-activity-panel")
+        .channel(uniqueChannelName("client-activity-panel"))
         .on("postgres_changes", { event: "*", schema: "public", table: "user_sessions" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "activity_log" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refetch)

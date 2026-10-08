@@ -1,10 +1,11 @@
 "use client";
 
+import { formatDateTime } from "@/lib/format/datetime";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import { isMasterKeyUser } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
@@ -31,7 +32,7 @@ function formatMoney(amount: number | null) {
 
 function formatDate(value: string | null) {
   if (!value) return "—";
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(new Date(value), {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -87,8 +88,9 @@ export function BountiesBoard({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       await refetch();
+      if (cancelled) return;
       channel = supabase
-        .channel("bounties-board")
+        .channel(uniqueChannelName("bounties-board"))
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refetch)
         .subscribe();
     }

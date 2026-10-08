@@ -1,10 +1,11 @@
 "use client";
 
+import { formatDate, formatTime } from "@/lib/format/datetime";
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser } from "@/components/providers/user-provider";
 import type { Tables } from "@/lib/types/database.types";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +38,7 @@ function formatRange(startsAt: string, endsAt: string) {
   const end = new Date(endsAt);
   const dateFmt: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   const timeFmt: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
-  return `${start.toLocaleDateString(undefined, dateFmt)}, ${start.toLocaleTimeString(undefined, timeFmt)}–${end.toLocaleTimeString(undefined, timeFmt)}`;
+  return `${formatDate(start, dateFmt)}, ${formatTime(start, timeFmt)}–${formatTime(end, timeFmt)}`;
 }
 
 export function MeetupList({
@@ -69,7 +70,7 @@ export function MeetupList({
       if (cancelled) return;
 
       channel = supabase
-        .channel("meetups")
+        .channel(uniqueChannelName("meetups"))
         .on("postgres_changes", { event: "*", schema: "public", table: "meetup_proposals" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "meetup_responses" }, refetch)
         .subscribe();

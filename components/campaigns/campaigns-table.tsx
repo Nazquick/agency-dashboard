@@ -1,9 +1,10 @@
 "use client";
 
+import { formatDate as formatAppDate } from "@/lib/format/datetime";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import {
   CAMPAIGN_STATUSES,
   DISTRIBUTION_CHANNELS,
@@ -41,7 +42,7 @@ function formatCurrency(value: number | null): string {
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return formatAppDate(new Date(value), { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function CampaignsTable({
@@ -75,7 +76,7 @@ export function CampaignsTable({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       channel = supabase
-        .channel("campaigns-table")
+        .channel(uniqueChannelName("campaigns-table"))
         .on("postgres_changes", { event: "*", schema: "public", table: "campaigns" }, refetch)
         .subscribe();
     }

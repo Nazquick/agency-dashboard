@@ -1,9 +1,10 @@
 "use client";
 
+import { formatDate, formatTime } from "@/lib/format/datetime";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { MEDIA_TYPES, mediaTypeHex, mediaTypeLabel, platformLabel } from "@/lib/social-posts/constants";
 import { flattenPostCredits } from "@/lib/social-posts/flatten";
 import { clientThemeFor } from "@/lib/social-posts/client-themes";
@@ -97,7 +98,7 @@ export function PostPlanCalendar({
       supabase = await createRealtimeClient();
       if (cancelled) return;
       channel = supabase
-        .channel(`post-plan-calendar-${defaultClientId ?? "all"}`)
+        .channel(uniqueChannelName(`post-plan-calendar-${defaultClientId ?? "all"}`))
         .on("postgres_changes", { event: "*", schema: "public", table: "social_posts" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "social_post_credits" }, refetch)
         .subscribe();
@@ -198,7 +199,7 @@ export function PostPlanCalendar({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h2 className="min-w-[10rem] text-center text-lg font-semibold">
-            {month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+            {formatDate(month, { month: "long", year: "numeric" })}
           </h2>
           <Button variant="outline" size="icon-sm" onClick={() => setMonth((m) => addMonths(m, 1))}>
             <ChevronRight className="h-4 w-4" />
@@ -306,7 +307,7 @@ export function PostPlanCalendar({
                             {p.client.name.trim()}
                           </span>
                         )}
-                        {new Date(p.post_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
+                        {formatTime(new Date(p.post_at), { hour: "numeric", minute: "2-digit" })}{" "}
                         {p.caption || platformLabel(p.platform)}
                       </button>
                     );
@@ -339,7 +340,7 @@ export function PostPlanCalendar({
       {!readOnly && !activeClientId && (
         <div className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold">
-            Posts per client — {month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+            Posts per client — {formatDate(month, { month: "long", year: "numeric" })}
           </h3>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {clientStats.rows.map((r) => (

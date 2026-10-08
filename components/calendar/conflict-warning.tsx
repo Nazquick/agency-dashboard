@@ -1,3 +1,4 @@
+import { formatDate, formatTime } from "@/lib/format/datetime";
 import type { ConflictingEvent } from "@/lib/calendar/conflicts";
 
 function formatRange(startsAt: string, endsAt: string) {
@@ -5,7 +6,7 @@ function formatRange(startsAt: string, endsAt: string) {
   const end = new Date(endsAt);
   const dateFmt: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   const timeFmt: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
-  return `${start.toLocaleDateString(undefined, dateFmt)}, ${start.toLocaleTimeString(undefined, timeFmt)}–${end.toLocaleTimeString(undefined, timeFmt)}`;
+  return `${formatDate(start, dateFmt)}, ${formatTime(start, timeFmt)}–${formatTime(end, timeFmt)}`;
 }
 
 export function ConflictWarning({ conflicts }: { conflicts: ConflictingEvent[] }) {

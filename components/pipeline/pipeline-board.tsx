@@ -1,11 +1,12 @@
 "use client";
 
+import { formatDateTime } from "@/lib/format/datetime";
 import { useEffect, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { createRealtimeClient } from "@/lib/supabase/realtime-client";
+import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { useUser, useGroups } from "@/components/providers/user-provider";
 import { isTeamLeader } from "@/lib/auth/roles";
 import { logActivity } from "@/lib/activity/log";
@@ -75,7 +76,7 @@ function resolveAssignees(
 
 function formatDeadline(value: string | null) {
   if (!value) return "—";
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(new Date(value), {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -144,8 +145,10 @@ export function PipelineBoard({
 
       await refetchFileTaskIds();
 
+      if (cancelled) return;
+
       channel = supabase
-        .channel(`tasks-board-${defaultClientId ?? "all"}`)
+        .channel(uniqueChannelName(`tasks-board-${defaultClientId ?? "all"}`))
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "task_assignees" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "task_attachments" }, refetchFileTaskIds)
