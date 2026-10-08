@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/session-user";
 import { createClient } from "@/lib/supabase/server";
 import { computeAfterMetrics, combineBaselines } from "@/lib/analytics/portal-metrics";
 import { PortalAnalytics } from "@/components/portal/portal-analytics";
 
 export default async function PortalAnalyticsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect("/");
 
   const { data: profile } = await supabase

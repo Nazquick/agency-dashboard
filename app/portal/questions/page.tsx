@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/session-user";
 import { createClient } from "@/lib/supabase/server";
 import { ClientQuestionsPanel } from "@/components/portal/client-questions-panel";
 
 export default async function PortalQuestionsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect("/");
 
   const { data: profile } = await supabase

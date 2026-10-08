@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/session-user";
 import { createClient } from "@/lib/supabase/server";
 import { isMasterKeyUser } from "@/lib/auth/roles";
 import { CampaignDetailView } from "@/components/campaigns/campaign-detail-view";
@@ -12,9 +13,7 @@ export default async function CampaignDetailPage({
   const { campaignId } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect("/");
 
   const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).single();

@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/session-user";
 import { createClient } from "@/lib/supabase/server";
 import { MyDayBoard, type MyDayTask } from "@/components/today/my-day-board";
 
 export default async function TodayPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect("/");
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();

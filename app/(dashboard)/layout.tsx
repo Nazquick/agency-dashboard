@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/session-user";
 import { createClient } from "@/lib/supabase/server";
 import { UserProvider, RolesProvider, GroupsProvider } from "@/components/providers/user-provider";
 import { SessionHeartbeat } from "@/components/providers/session-heartbeat";
@@ -12,9 +13,7 @@ export default async function DashboardLayout({
 }) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
 
   if (!user) {
     redirect("/");

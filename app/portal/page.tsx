@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/session-user";
 import { createClient } from "@/lib/supabase/server";
 import { asCreditPeriod, currentPeriodStart } from "@/lib/analytics/metrics";
 import { ClientPipelineTable } from "@/components/portal/client-pipeline-table";
@@ -9,9 +10,7 @@ type PortalTask = Tables<"tasks"> & { client: { id: string; name: string } | nul
 
 export default async function PortalPipelinePage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect("/");
 
   const { data: profile } = await supabase

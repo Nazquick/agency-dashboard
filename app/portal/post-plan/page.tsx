@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/session-user";
 import { createClient } from "@/lib/supabase/server";
 import { PostPlanCalendar } from "@/components/social-posts/post-plan-calendar";
 import { flattenPostCredits } from "@/lib/social-posts/flatten";
 
 export default async function PortalPostPlanPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect("/");
 
   const { data: profile } = await supabase

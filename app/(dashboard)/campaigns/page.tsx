@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/session-user";
 import { createClient } from "@/lib/supabase/server";
 import { isMasterKeyUser } from "@/lib/auth/roles";
 import { CampaignsTable } from "@/components/campaigns/campaigns-table";
@@ -7,9 +8,7 @@ import type { CampaignWithClient } from "@/components/campaigns/campaign-form";
 export default async function CampaignsPage() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect("/");
 
   const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).single();
