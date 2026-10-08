@@ -208,10 +208,18 @@ export function TaskForm({
   }
 
   function applyTemplate(id: string) {
-    setTemplateId(id);
-    if (id === NO_TEMPLATE) return;
+    if (id === NO_TEMPLATE) {
+      setTemplateId(id);
+      return;
+    }
     const template = templates.find((t) => t.id === id);
     if (!template) return;
+    // Applying a template swaps out the steps, so don't silently discard
+    // steps someone has already written.
+    if (steps.length > 0 && !window.confirm("Replace the current steps with this template's steps?")) {
+      return;
+    }
+    setTemplateId(id);
     setSteps(template.task_template_steps.map(stepDraftFromRow));
   }
 
@@ -547,24 +555,22 @@ export function TaskForm({
           <DialogTitle>{task ? "Edit task" : "New task"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {templates.length > 0 && (
-            <div className="space-y-2">
-              <Label>Start from template</Label>
-              <Select value={templateId} onValueChange={applyTemplate}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_TEMPLATE}>None</SelectItem>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Start from template</Label>
+            <Select value={templateId} onValueChange={applyTemplate} disabled={templates.length === 0}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={templates.length === 0 ? "Loading templates…" : "None"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_TEMPLATE}>None</SelectItem>
+                {templates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
@@ -739,7 +745,7 @@ export function TaskForm({
 
             {steps.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No steps yet. Add steps or start from a template above.
+                No steps yet. Add steps, or pick a template at the top of this form.
               </p>
             ) : (
               <div className="space-y-3">

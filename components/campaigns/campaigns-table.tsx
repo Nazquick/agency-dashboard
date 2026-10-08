@@ -1,5 +1,6 @@
 "use client";
 
+import { RoasValue } from "@/components/campaigns/roas-cell";
 import { formatDate as formatAppDate } from "@/lib/format/datetime";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -212,7 +213,7 @@ export function CampaignsTable({
                   </TableCell>
                   <TableCell className="text-muted-foreground">{formatCurrency(c.budget)}</TableCell>
                   <TableCell className="text-muted-foreground">{formatCurrency(c.ad_spend)}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.roas != null ? `${c.roas}x` : "—"}</TableCell>
+                  <TableCell className="text-muted-foreground"><RoasValue roas={c.roas} adSpend={c.ad_spend} /></TableCell>
                   <TableCell className="text-muted-foreground">{formatDate(c.publication_date)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

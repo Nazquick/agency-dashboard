@@ -153,7 +153,7 @@ export function ClientDetailPanel({
         <CardContent>
           {assets.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No assets logged yet. Add a social account, then log posts to track performance.
+              No assets logged yet for {client.name}. Add a social account, then log posts to track performance.
             </p>
           ) : (
             <div className="overflow-x-auto">

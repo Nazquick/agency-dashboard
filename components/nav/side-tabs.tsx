@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const TABS = [
+  { segment: "", label: "Summary" },
   { segment: "overview", label: "Overview" },
   { segment: "calendar", label: "Calendar" },
   { segment: "pipeline", label: "Pipeline" },
@@ -20,11 +21,11 @@ export function SideTabs({ clientId }: { clientId: string }) {
   return (
     <nav className="flex gap-1 overflow-x-auto pb-1 md:w-48 md:shrink-0 md:flex-col md:overflow-visible md:pb-0">
       {TABS.map((tab) => {
-        const href = `/clients/${clientId}/${tab.segment}`;
+        const href = tab.segment ? `/clients/${clientId}/${tab.segment}` : `/clients/${clientId}`;
         const isActive = pathname === href;
         return (
           <Link
-            key={tab.segment}
+            key={tab.segment || "summary"}
             href={href}
             className={cn(
               "shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors",

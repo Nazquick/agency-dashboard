@@ -35,7 +35,7 @@ export default async function AdminPage() {
     { data: archivedTasks },
     { data: deletedTasks },
   ] = await Promise.all([
-    supabase.from("clients").select("id, name, group_id").eq("archived", false).order("name"),
+    supabase.from("clients").select("id, name, group_id, is_group_all").eq("archived", false).order("name"),
     supabase
       .from("clients")
       .select("id, name, monthly_credit_limit, credit_period")

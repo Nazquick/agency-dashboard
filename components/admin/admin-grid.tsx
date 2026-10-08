@@ -72,7 +72,7 @@ export function AdminGrid({
   archivedTasks,
   deletedTasks,
 }: {
-  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
+  clients: Pick<Tables<"clients">, "id" | "name" | "group_id" | "is_group_all">[];
   quotaClients: QuotaClient[];
   quotaTasks: QuotaTask[];
   quotaTopups: QuotaTopup[];

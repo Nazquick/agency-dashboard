@@ -1,5 +1,6 @@
 "use client";
 
+import { RoasValue } from "@/components/campaigns/roas-cell";
 import { formatDate as formatAppDate } from "@/lib/format/datetime";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -112,7 +113,7 @@ export function CampaignDetailView({
           <Field label="Client" value={campaign.client?.name ?? "—"} />
           <Field label="Budget" value={formatCurrency(campaign.budget)} />
           <Field label="Ad spend" value={formatCurrency(campaign.ad_spend)} />
-          <Field label="ROAS" value={campaign.roas != null ? `${campaign.roas}x` : "—"} />
+          <Field label="ROAS" value={<RoasValue roas={campaign.roas} adSpend={campaign.ad_spend} />} />
           <Field label="Boost location" value={campaign.boost_location ?? "—"} />
           <Field label="Publication date" value={formatDate(campaign.publication_date)} />
           <Field

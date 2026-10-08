@@ -62,7 +62,7 @@ export default async function ClientsPage() {
                   />
                 )}
                 <Link
-                  href={`/clients/${client.id}/overview`}
+                  href={`/clients/${client.id}`}
                   className="absolute inset-0 z-0"
                   aria-label={client.name}
                 />
@@ -74,7 +74,7 @@ export default async function ClientsPage() {
                     {outstanding}
                   </span>
                 )}
-                <CardHeader className="relative">
+                <CardHeader className="pointer-events-none relative">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -84,7 +84,7 @@ export default async function ClientsPage() {
                     {client.name}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="relative pb-14">
+                <CardContent className="pointer-events-none relative pb-14">
                   <p className="line-clamp-3 text-sm text-muted-foreground">
                     {client.description || "No description yet."}
                   </p>

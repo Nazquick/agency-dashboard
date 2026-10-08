@@ -24,8 +24,11 @@ export function AnalyticsDashboard({
   initialContentProofs: Tables<"content_proofs">[];
   initialReports: Tables<"client_reports">[];
 }) {
+  // Open on a client that actually has data, so the detail panel doesn't
+  // say "no assets" directly under cards that show logged assets.
   const [selectedClientId, setSelectedClientId] = useState<string | null>(
-    clients[0]?.id ?? null
+    () =>
+      (clients.find((c) => initialAssets.some((a) => a.client_id === c.id)) ?? clients[0])?.id ?? null
   );
   const [socialAccounts, setSocialAccounts] = useState(initialSocialAccounts);
   const [assets, setAssets] = useState(initialAssets);

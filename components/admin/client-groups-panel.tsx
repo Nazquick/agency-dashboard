@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 export function ClientGroupsPanel({
   clients,
 }: {
-  clients: Pick<Tables<"clients">, "id" | "name" | "group_id">[];
+  clients: Pick<Tables<"clients">, "id" | "name" | "group_id" | "is_group_all">[];
 }) {
   const groups = useGroups();
   const addGroup = useAddGroup();
@@ -68,14 +68,17 @@ export function ClientGroupsPanel({
       ) : (
         <div className="space-y-3">
           {groups.map((g) => {
-            const members = clients.filter((c) => c.group_id === g.id);
+            // The group's own "(ALL)" pseudo-client is not a location.
+            const members = clients.filter((c) => c.group_id === g.id && !c.is_group_all);
             return (
               <div key={g.id} className="space-y-2 rounded-lg border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-medium">{g.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {members.length} location{members.length === 1 ? "" : "s"}
+                      {members.length === 0
+                        ? "No active locations"
+                        : `${members.length} location${members.length === 1 ? "" : "s"}`}
                     </p>
                   </div>
                   <CreateMasterLoginDialog groupId={g.id} groupName={g.name} />
