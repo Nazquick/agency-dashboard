@@ -29,7 +29,6 @@ export default async function AdminPage() {
     { data: companyTransactions },
     { data: sessions },
     { data: activity },
-    { data: credentials },
     { data: whitelabelTenants },
     { data: whitelabelInvites },
     { data: archivedTasks },
@@ -61,7 +60,6 @@ export default async function AdminPage() {
     supabase.from("company_transactions").select("*").order("transaction_date", { ascending: false }),
     supabase.from("user_sessions").select("*"),
     supabase.from("activity_log").select("*").order("created_at", { ascending: false }).limit(500),
-    supabase.from("client_credentials").select("*").order("platform"),
     supabase.from("whitelabel_tenants").select("*").order("created_at", { ascending: false }),
     supabase.from("whitelabel_invites").select("*").order("created_at", { ascending: false }),
     supabase
@@ -99,7 +97,6 @@ export default async function AdminPage() {
         salaryTotal={salaryTotal}
         initialSessions={sessions ?? []}
         initialActivity={activity ?? []}
-        initialCredentials={credentials ?? []}
         whitelabelTenants={whitelabelTenants ?? []}
         whitelabelInvites={whitelabelInvites ?? []}
         archivedTasks={(archivedTasks ?? []) as unknown as StorageTask[]}

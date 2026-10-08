@@ -66,7 +66,6 @@ export function AdminGrid({
   salaryTotal,
   initialSessions,
   initialActivity,
-  initialCredentials,
   whitelabelTenants,
   whitelabelInvites,
   archivedTasks,
@@ -84,7 +83,6 @@ export function AdminGrid({
   salaryTotal: number;
   initialSessions: Tables<"user_sessions">[];
   initialActivity: Tables<"activity_log">[];
-  initialCredentials: Tables<"client_credentials">[];
   whitelabelTenants: Tables<"whitelabel_tenants">[];
   whitelabelInvites: Tables<"whitelabel_invites">[];
   archivedTasks: StorageTask[];
@@ -129,7 +127,7 @@ export function AdminGrid({
       case "client-groups":
         return <ClientGroupsPanel clients={clients} />;
       case "client-credentials":
-        return <ClientCredentialsPanel clients={clients} initialCredentials={initialCredentials} />;
+        return <ClientCredentialsPanel clients={clients} />;
       case "email-clients":
         return <EmailBroadcastDialog audience="clients" />;
       case "email-members":

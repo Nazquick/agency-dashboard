@@ -375,35 +375,35 @@ export type Database = {
       }
       client_credentials: {
         Row: {
-          auth_code: string | null
+          auth_code_secret_id: string | null
           client_id: string
           created_at: string
           created_by: string | null
           id: string
           login: string
-          password: string
+          password_secret_id: string
           platform: string
           updated_at: string
         }
         Insert: {
-          auth_code?: string | null
+          auth_code_secret_id?: string | null
           client_id: string
           created_at?: string
           created_by?: string | null
           id?: string
           login: string
-          password: string
+          password_secret_id: string
           platform: string
           updated_at?: string
         }
         Update: {
-          auth_code?: string | null
+          auth_code_secret_id?: string | null
           client_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
           login?: string
-          password?: string
+          password_secret_id?: string
           platform?: string
           updated_at?: string
         }
@@ -2246,7 +2246,40 @@ export type Database = {
       current_client_group_id: { Args: never; Returns: string }
       current_client_id: { Args: never; Returns: string }
       current_role: { Args: never; Returns: string }
+      is_admin_with_mfa: { Args: never; Returns: boolean }
       is_task_assignee: { Args: { p_task_id: string }; Returns: boolean }
+      reveal_client_credential: {
+        Args: { p_field: string; p_id: string }
+        Returns: string
+      }
+      save_client_credential: {
+        Args: {
+          p_auth_code: string
+          p_client_id: string
+          p_id: string
+          p_login: string
+          p_password: string
+          p_platform: string
+          p_remove_auth_code?: boolean
+        }
+        Returns: {
+          auth_code_secret_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          login: string
+          password_secret_id: string
+          platform: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_credentials"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       content_asset_type:

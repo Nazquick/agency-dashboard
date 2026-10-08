@@ -20,6 +20,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   special_task_approved: "Approved a bounty",
   task_attachment_uploaded: "Uploaded a file to a task",
   task_attachment_deleted: "Removed a file from a task",
+  credential_viewed: "Viewed a client login",
+  credential_saved: "Saved a client login",
 };
 
 export function activityLabel(action: string): string {
