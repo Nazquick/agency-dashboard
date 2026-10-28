@@ -28,7 +28,15 @@ function formatPostAt(value: string): string {
 
 // Read-only counterpart to CreatePostDialog — used wherever a viewer can
 // see a post but never edit it (the client portal). No form, no mutations.
-export function PostViewDialog({ post, trigger }: { post: PostWithRelations; trigger: React.ReactNode }) {
+export function PostViewDialog({
+  post,
+  trigger,
+  openOn = "click",
+}: {
+  post: PostWithRelations;
+  trigger: React.ReactNode;
+  openOn?: "click" | "doubleClick";
+}) {
   const [open, setOpen] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
@@ -42,7 +50,19 @@ export function PostViewDialog({ post, trigger }: { post: PostWithRelations; tri
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {openOn === "doubleClick" ? (
+        <div
+          className="select-none"
+          onDoubleClick={() => void handleOpenChange(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void handleOpenChange(true);
+          }}
+        >
+          {trigger}
+        </div>
+      ) : (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{post.caption || platformLabel(post.platform)}</DialogTitle>

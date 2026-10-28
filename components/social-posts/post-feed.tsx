@@ -260,8 +260,12 @@ export function PostFeed({
 
       {adjusting && (
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-          Drag a photo to move it, scroll or use + / − to zoom. Changes save automatically.
+          Drag a photo to move it, scroll or use + / − to zoom. Changes save automatically. Double-click
+          a post to open it.
         </p>
+      )}
+      {!adjusting && sorted.length > 0 && (
+        <p className="text-xs text-muted-foreground">Double-click a post to open it.</p>
       )}
 
       {sorted.length === 0 ? (
@@ -279,17 +283,17 @@ export function PostFeed({
             const scheduled = new Date(post.post_at).getTime() > now;
             return (
               <div key={post.id}>
-                {adjusting ? (
-                  <AdjustTile
-                    post={post}
-                    thumbnailUrl={thumbnailUrl}
-                    crop={crop}
-                    scheduled={scheduled}
-                    onChange={(next) => handleCropChange(post.id, next)}
-                  />
-                ) : (
-                  renderPost(
-                    post,
+                {renderPost(
+                  post,
+                  adjusting ? (
+                    <AdjustTile
+                      post={post}
+                      thumbnailUrl={thumbnailUrl}
+                      crop={crop}
+                      scheduled={scheduled}
+                      onChange={(next) => handleCropChange(post.id, next)}
+                    />
+                  ) : (
                     <FeedTile post={post} thumbnailUrl={thumbnailUrl} crop={crop} scheduled={scheduled} />
                   )
                 )}

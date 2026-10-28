@@ -75,6 +75,7 @@ export function CreatePostDialog({
   defaultDate,
   defaultClientId,
   trigger,
+  openOn = "click",
   onSuccess,
   onDelete,
 }: {
@@ -84,6 +85,9 @@ export function CreatePostDialog({
   defaultDate?: Date;
   defaultClientId?: string;
   trigger: React.ReactNode;
+  // The feed opens a post on double-click: a single click would open the
+  // dialog and the second click would land on its backdrop and close it.
+  openOn?: "click" | "doubleClick";
   onSuccess?: (post: Tables<"social_posts">, creditIds: string[]) => void;
   onDelete?: (id: string) => void;
 }) {
@@ -297,7 +301,19 @@ export function CreatePostDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {openOn === "doubleClick" ? (
+        <div
+          className="select-none"
+          onDoubleClick={() => handleOpenChange(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleOpenChange(true);
+          }}
+        >
+          {trigger}
+        </div>
+      ) : (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{post ? "Edit post" : "New post"}</DialogTitle>

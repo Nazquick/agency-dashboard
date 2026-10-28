@@ -214,9 +214,9 @@ export function PostPlanCalendar({
 
   // A post opens in the edit dialog for the team and a read-only one in the
   // client portal — wherever it is shown (calendar chip or feed tile).
-  function renderPostDialog(p: PostWithRelations, trigger: React.ReactNode) {
+  function renderPostDialog(p: PostWithRelations, trigger: React.ReactNode, openOn: "click" | "doubleClick" = "click") {
     return readOnly ? (
-      <PostViewDialog key={p.id} post={p} trigger={trigger} />
+      <PostViewDialog key={p.id} post={p} trigger={trigger} openOn={openOn} />
     ) : (
       <CreatePostDialog
         key={p.id}
@@ -225,6 +225,7 @@ export function PostPlanCalendar({
         clients={clients}
         defaultClientId={activeClientId}
         trigger={trigger}
+        openOn={openOn}
         onSuccess={mergeUpdatedPost}
         onDelete={(id) => setPosts((prev) => prev.filter((post) => post.id !== id))}
       />
@@ -271,7 +272,7 @@ export function PostPlanCalendar({
           needsClient={!readOnly && !activeClientId}
           clients={clients}
           onPickClient={setSelectedClientId}
-          renderPost={renderPostDialog}
+          renderPost={(p, tile) => renderPostDialog(p, tile, "doubleClick")}
           canAdjust={!readOnly}
           onSaveCrop={saveCrop}
           addPost={
