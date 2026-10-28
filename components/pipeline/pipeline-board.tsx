@@ -51,6 +51,13 @@ import {
 } from "@/components/ui/table";
 
 const UNDO_TOAST_MS = 8000;
+
+const HOUR_MS = 60 * 60 * 1000;
+const ADDED_WINDOWS: { value: string; label: string; ms: number }[] = [
+  { value: "24h", label: "Last 24 hours", ms: 24 * HOUR_MS },
+  { value: "7d", label: "Last 7 days", ms: 7 * 24 * HOUR_MS },
+  { value: "30d", label: "Last 30 days", ms: 30 * 24 * HOUR_MS },
+];
 const ALL = "__all__";
 const ME = "__me__";
 const NONE = "__none__";
@@ -108,6 +115,14 @@ export function PipelineBoard({
   const [assigneeFilter, setAssigneeFilter] = useState<string>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<string>(ALL);
   const [clientFilter, setClientFilter] = useState<string>(ALL);
+  const [addedFilter, setAddedFilter] = useState<string>(ALL);
+  // A ticking clock so "last 24 hours" keeps meaning the last 24 hours instead
+  // of freezing at the moment the page loaded.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const [showArchived, setShowArchived] = useState(false);
   const [sortMode, setSortMode] = useState<"priority" | "recent">("priority");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
@@ -167,6 +182,9 @@ export function PipelineBoard({
   // Every filter except the status toggles — used both to build the
   // status-toggled list below and to count each status chip, so a chip's
   // own count doesn't drop to 0 just because it's switched off.
+  const addedWindowMs = ADDED_WINDOWS.find((w) => w.value === addedFilter)?.ms;
+  const addedCutoff = addedWindowMs === undefined ? null : now - addedWindowMs;
+
   const preStatusFiltered = useMemo(() => {
     return tasks.filter((t) => {
       if (!showArchived && t.archived) return false;
@@ -191,9 +209,11 @@ export function PipelineBoard({
         }
       }
       if (showFilesOnly && !tasksWithFiles.has(t.id)) return false;
+      if (addedCutoff !== null && new Date(t.created_at).getTime() < addedCutoff) return false;
       return true;
     });
   }, [
+    addedCutoff,
     tasks,
     clients,
     groups,
@@ -601,6 +621,30 @@ export function PipelineBoard({
             </SelectContent>
           </Select>
 
+          <Select
+            value={addedFilter}
+            onValueChange={(v) => {
+              setAddedFilter(v);
+              // Picking a window is a "show me the latest" action: lead with the newest.
+              if (v !== ALL) {
+                setSortMode("recent");
+                setSortDir("desc");
+              }
+            }}
+          >
+            <SelectTrigger className="w-40" aria-label="Filter by when the task was added">
+              <SelectValue placeholder="Added" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Added: any time</SelectItem>
+              {ADDED_WINDOWS.map((w) => (
+                <SelectItem key={w.value} value={w.value}>
+                  {w.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {showClientColumn && (
             <Select value={clientFilter} onValueChange={setClientFilter}>
               <SelectTrigger className="w-48">
@@ -806,6 +850,14 @@ export function PipelineBoard({
               </Badge>
             )}
           </div>
+          {task.source === "client" && (
+            <p
+              className="px-2 text-[11px] font-normal text-muted-foreground"
+              title={formatDateTime(task.created_at, { dateStyle: "full", timeStyle: "short" })}
+            >
+              Added {formatDeadline(task.created_at)}
+            </p>
+          )}
         </TableCell>
         {showClientColumn && (
           <TableCell className="text-muted-foreground">

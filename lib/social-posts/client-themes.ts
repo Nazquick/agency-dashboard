@@ -7,7 +7,7 @@ export interface ClientTheme {
 
 // Matched on the client's name rather than id so a renamed or re-created
 // client keeps its colour. "Teaology" is the brand's own spelling; the
-// client record is stored as "TEOLOGY".
+// client record was once stored as "TEOLOGY"; the pattern matches both.
 const THEMES: { match: RegExp; theme: ClientTheme }[] = [
   { match: /te(a)?ology/i, theme: { hex: "#ec4899", onAccent: "#ffffff" } },
   { match: /ochaya/i, theme: { hex: "#22c55e", onAccent: "#ffffff" } },
