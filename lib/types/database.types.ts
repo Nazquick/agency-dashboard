@@ -1469,7 +1469,10 @@ export type Database = {
           post_type: string
           suggested_song: string | null
           tag_handles: string | null
+          thumbnail_focus_x: number
+          thumbnail_focus_y: number
           thumbnail_path: string | null
+          thumbnail_zoom: number
           updated_at: string
         }
         Insert: {
@@ -1484,7 +1487,10 @@ export type Database = {
           post_type?: string
           suggested_song?: string | null
           tag_handles?: string | null
+          thumbnail_focus_x?: number
+          thumbnail_focus_y?: number
           thumbnail_path?: string | null
+          thumbnail_zoom?: number
           updated_at?: string
         }
         Update: {
@@ -1499,7 +1505,10 @@ export type Database = {
           post_type?: string
           suggested_song?: string | null
           tag_handles?: string | null
+          thumbnail_focus_x?: number
+          thumbnail_focus_y?: number
           thumbnail_path?: string | null
+          thumbnail_zoom?: number
           updated_at?: string
         }
         Relationships: [

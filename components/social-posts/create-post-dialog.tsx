@@ -10,6 +10,8 @@ import { useUser, useGroups } from "@/components/providers/user-provider";
 import { logActivity } from "@/lib/activity/log";
 import { PLATFORMS, MEDIA_TYPES, POST_TYPES, platformLabel } from "@/lib/social-posts/constants";
 import { PostAttachments } from "@/components/social-posts/post-attachments";
+import { CropEditor } from "@/components/social-posts/crop-frame";
+import { DEFAULT_CROP, cropFromPost, type ThumbnailCrop } from "@/lib/social-posts/crop";
 import {
   THUMBNAIL_ACCEPT,
   prepareThumbnail,
@@ -95,6 +97,7 @@ export function CreatePostDialog({
   // What the thumbnail box shows: a just-chosen file, else the saved image.
   const [thumbPreview, setThumbPreview] = useState<string | null>(null);
   const [removeThumb, setRemoveThumb] = useState(false);
+  const [crop, setCrop] = useState<ThumbnailCrop>(() => (post ? cropFromPost(post) : DEFAULT_CROP));
 
   const {
     register,
@@ -143,6 +146,7 @@ export function CreatePostDialog({
     });
     setThumbFile(file);
     setRemoveThumb(false);
+    setCrop(DEFAULT_CROP);
   }
 
   async function showSavedThumbnail(path: string) {
@@ -154,6 +158,7 @@ export function CreatePostDialog({
     setOpen(next);
     clearThumbnailChoice();
     if (!next) return;
+    setCrop(post ? cropFromPost(post) : DEFAULT_CROP);
     if (post?.thumbnail_path) void showSavedThumbnail(post.thumbnail_path);
     if (post) {
       reset({
@@ -196,6 +201,9 @@ export function CreatePostDialog({
       suggested_song: values.suggested_song || null,
       post_at: postAtIso,
       client_id: values.client_id && values.client_id !== NONE ? values.client_id : null,
+      thumbnail_zoom: removeThumb ? DEFAULT_CROP.zoom : crop.zoom,
+      thumbnail_focus_x: removeThumb ? DEFAULT_CROP.x : crop.x,
+      thumbnail_focus_y: removeThumb ? DEFAULT_CROP.y : crop.y,
     };
 
     const { data, error } = post
@@ -394,14 +402,13 @@ export function CreatePostDialog({
           <div className="space-y-2">
             <Label>Thumbnail</Label>
             <div className="flex items-center gap-3">
-              <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted text-xs text-muted-foreground">
-                {thumbPreview && !removeThumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumbPreview} alt="Post thumbnail preview" className="size-full object-cover" />
-                ) : (
-                  "No image"
-                )}
-              </div>
+              {thumbPreview && !removeThumb ? (
+                <CropEditor src={thumbPreview} crop={crop} onChange={setCrop} />
+              ) : (
+                <div className="flex size-24 shrink-0 items-center justify-center rounded-md border bg-muted text-xs text-muted-foreground">
+                  No image
+                </div>
+              )}
               <div className="space-y-2">
                 <input
                   ref={thumbInputRef}
@@ -423,6 +430,7 @@ export function CreatePostDialog({
                       onClick={() => {
                         if (thumbFile) {
                           clearThumbnailChoice();
+                          setCrop(post ? cropFromPost(post) : DEFAULT_CROP);
                           if (post?.thumbnail_path) void showSavedThumbnail(post.thumbnail_path);
                         } else {
                           setRemoveThumb(true);
@@ -434,7 +442,8 @@ export function CreatePostDialog({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Shown in this client&apos;s feed. JPG, PNG, WebP or GIF, up to 15MB.
+                  Shown in this client&apos;s feed. Drag the picture to choose the crop and use the
+                  slider to zoom. JPG, PNG, WebP or GIF, up to 15MB.
                 </p>
               </div>
             </div>

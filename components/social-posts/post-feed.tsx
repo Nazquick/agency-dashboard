@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Layers, Play } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/format/datetime";
 import { mediaTypeHex, platformLabel } from "@/lib/social-posts/constants";
 import { signedThumbnailUrls } from "@/lib/social-posts/thumbnail";
+import { cropFromPost, type ThumbnailCrop } from "@/lib/social-posts/crop";
+import { CropFrame } from "@/components/social-posts/crop-frame";
+import { Button } from "@/components/ui/button";
 import type { ClientTheme } from "@/lib/social-posts/client-themes";
 import type { PostWithRelations } from "@/components/social-posts/create-post-dialog";
 import { cn } from "@/lib/utils";
@@ -19,10 +22,12 @@ function initial(name: string): string {
 function FeedTile({
   post,
   thumbnailUrl,
+  crop,
   scheduled,
 }: {
   post: PostWithRelations;
   thumbnailUrl: string | undefined;
+  crop: ThumbnailCrop;
   scheduled: boolean;
 }) {
   const hex = mediaTypeHex(post.media_type);
@@ -35,8 +40,7 @@ function FeedTile({
       aria-label={`${post.caption || platformLabel(post.platform)} — ${formatDate(post.post_at, TILE_DATE)}`}
     >
       {thumbnailUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={thumbnailUrl} alt="" loading="lazy" className="size-full object-cover" />
+        <CropFrame src={thumbnailUrl} crop={crop} className="absolute inset-0" />
       ) : (
         <div
           className="flex size-full items-center justify-center p-2 text-center text-[11px] font-medium leading-snug sm:text-xs"
@@ -67,6 +71,35 @@ function FeedTile({
   );
 }
 
+// Adjust-crop mode: the picture itself is draggable and zoomable in place,
+// next to its neighbours, so the grid as a whole can be composed.
+function AdjustTile({
+  post,
+  thumbnailUrl,
+  crop,
+  scheduled,
+  onChange,
+}: {
+  post: PostWithRelations;
+  thumbnailUrl: string | undefined;
+  crop: ThumbnailCrop;
+  scheduled: boolean;
+  onChange: (crop: ThumbnailCrop) => void;
+}) {
+  if (!thumbnailUrl) {
+    return (
+      <div className="relative opacity-60">
+        <FeedTile post={post} thumbnailUrl={undefined} crop={crop} scheduled={scheduled} />
+      </div>
+    );
+  }
+  return (
+    <div className="relative aspect-square ring-2 ring-primary/50">
+      <CropFrame src={thumbnailUrl} crop={crop} onChange={onChange} controls="buttons" className="absolute inset-0" />
+    </div>
+  );
+}
+
 // One client's feed: a 3-column grid in posting order, newest post top-left,
 // oldest at the bottom — what their profile will look like as posts go out.
 export function PostFeed({
@@ -78,6 +111,8 @@ export function PostFeed({
   onPickClient,
   renderPost,
   addPost,
+  canAdjust = false,
+  onSaveCrop,
 }: {
   posts: PostWithRelations[];
   clientName?: string;
@@ -88,8 +123,58 @@ export function PostFeed({
   onPickClient: (clientId: string) => void;
   renderPost: (post: PostWithRelations, tile: React.ReactNode) => React.ReactNode;
   addPost?: React.ReactNode;
+  // Team only: lets the thumbnails be dragged/zoomed in place.
+  canAdjust?: boolean;
+  onSaveCrop?: (postId: string, crop: ThumbnailCrop) => Promise<boolean>;
 }) {
   const [now] = useState(() => Date.now());
+  const [adjusting, setAdjusting] = useState(false);
+  // Crops being edited right now; shown immediately, then saved shortly after
+  // the user stops moving so a drag isn't one network call per pixel.
+  const [overrides, setOverrides] = useState<Record<string, ThumbnailCrop>>({});
+  const pending = useRef<Record<string, ThumbnailCrop>>({});
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const saveRef = useRef(onSaveCrop);
+  useEffect(() => {
+    saveRef.current = onSaveCrop;
+  });
+
+  useEffect(() => {
+    const queued = pending.current;
+    const waiting = timers.current;
+    return () => {
+      // Leaving the tab mid-edit must not lose the last adjustment.
+      Object.values(waiting).forEach(clearTimeout);
+      Object.entries(queued).forEach(([id, crop]) => void saveRef.current?.(id, crop));
+    };
+  }, []);
+
+  async function persist(postId: string) {
+    const crop = pending.current[postId];
+    if (!crop) return;
+    delete pending.current[postId];
+    clearTimeout(timers.current[postId]);
+    const ok = await saveRef.current?.(postId, crop);
+    if (ok && !pending.current[postId]) {
+      setOverrides((prev) => {
+        const next = { ...prev };
+        delete next[postId];
+        return next;
+      });
+    }
+  }
+
+  function handleCropChange(postId: string, crop: ThumbnailCrop) {
+    setOverrides((prev) => ({ ...prev, [postId]: crop }));
+    pending.current[postId] = crop;
+    clearTimeout(timers.current[postId]);
+    timers.current[postId] = setTimeout(() => void persist(postId), 700);
+  }
+
+  function toggleAdjusting() {
+    if (adjusting) Object.keys(pending.current).forEach((id) => void persist(id));
+    setAdjusting((v) => !v);
+  }
   const [urls, setUrls] = useState<Record<string, string>>({});
 
   const sorted = useMemo(
@@ -101,6 +186,8 @@ export function PostFeed({
       ),
     [posts]
   );
+
+  const hasThumbnails = sorted.some((p) => p.thumbnail_path);
 
   const pathsKey = sorted
     .map((p) => p.thumbnail_path)
@@ -161,8 +248,21 @@ export function PostFeed({
             </p>
           </div>
         </div>
-        {addPost}
+        <div className="flex items-center gap-2">
+          {canAdjust && hasThumbnails && (
+            <Button type="button" size="sm" variant={adjusting ? "default" : "outline"} onClick={toggleAdjusting}>
+              {adjusting ? "Done" : "Adjust crop"}
+            </Button>
+          )}
+          {addPost}
+        </div>
       </div>
+
+      {adjusting && (
+        <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+          Drag a photo to move it, scroll or use + / − to zoom. Changes save automatically.
+        </p>
+      )}
 
       {sorted.length === 0 ? (
         <div className="rounded-lg border border-dashed bg-card p-10 text-center text-sm text-muted-foreground">
@@ -173,18 +273,29 @@ export function PostFeed({
           className="grid grid-cols-3 gap-0.5 border-t-2 pt-0.5 sm:gap-1 sm:pt-1"
           style={accent ? { borderColor: accent } : undefined}
         >
-          {sorted.map((post) => (
-            <div key={post.id}>
-              {renderPost(
-                post,
-                <FeedTile
-                  post={post}
-                  thumbnailUrl={post.thumbnail_path ? urls[post.thumbnail_path] : undefined}
-                  scheduled={new Date(post.post_at).getTime() > now}
-                />
-              )}
-            </div>
-          ))}
+          {sorted.map((post) => {
+            const thumbnailUrl = post.thumbnail_path ? urls[post.thumbnail_path] : undefined;
+            const crop = overrides[post.id] ?? cropFromPost(post);
+            const scheduled = new Date(post.post_at).getTime() > now;
+            return (
+              <div key={post.id}>
+                {adjusting ? (
+                  <AdjustTile
+                    post={post}
+                    thumbnailUrl={thumbnailUrl}
+                    crop={crop}
+                    scheduled={scheduled}
+                    onChange={(next) => handleCropChange(post.id, next)}
+                  />
+                ) : (
+                  renderPost(
+                    post,
+                    <FeedTile post={post} thumbnailUrl={thumbnailUrl} crop={crop} scheduled={scheduled} />
+                  )
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

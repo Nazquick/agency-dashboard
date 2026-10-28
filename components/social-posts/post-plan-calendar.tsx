@@ -4,12 +4,15 @@ import { formatDate, formatTime } from "@/lib/format/datetime";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, ChevronLeft, ChevronRight, CalendarDays, LayoutGrid } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { MEDIA_TYPES, mediaTypeHex, mediaTypeLabel, platformLabel } from "@/lib/social-posts/constants";
 import { flattenPostCredits } from "@/lib/social-posts/flatten";
 import { clientThemeFor } from "@/lib/social-posts/client-themes";
 import { ClientPostKpis } from "@/components/social-posts/client-post-kpis";
 import { PostFeed } from "@/components/social-posts/post-feed";
+import type { ThumbnailCrop } from "@/lib/social-posts/crop";
 import { CreatePostDialog, type PostWithRelations } from "@/components/social-posts/create-post-dialog";
 import { PostViewDialog } from "@/components/social-posts/post-view-dialog";
 import type { Tables } from "@/lib/types/database.types";
@@ -170,6 +173,21 @@ export function PostPlanCalendar({
     });
   }
 
+  async function saveCrop(postId: string, crop: ThumbnailCrop): Promise<boolean> {
+    const { data, error } = await createClient()
+      .from("social_posts")
+      .update({ thumbnail_zoom: crop.zoom, thumbnail_focus_x: crop.x, thumbnail_focus_y: crop.y })
+      .eq("id", postId)
+      .select("id, thumbnail_zoom, thumbnail_focus_x, thumbnail_focus_y")
+      .single();
+    if (error || !data) {
+      toast.error(`Crop not saved: ${error?.message ?? "unknown error"}`);
+      return false;
+    }
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...data } : p)));
+    return true;
+  }
+
   const today = new Date();
 
   const clientSelect = showClientFilter ? (
@@ -254,6 +272,8 @@ export function PostPlanCalendar({
           clients={clients}
           onPickClient={setSelectedClientId}
           renderPost={renderPostDialog}
+          canAdjust={!readOnly}
+          onSaveCrop={saveCrop}
           addPost={
             readOnly ? null : (
               <CreatePostDialog
