@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,14 @@ import { useUser, useGroups } from "@/components/providers/user-provider";
 import { logActivity } from "@/lib/activity/log";
 import { PLATFORMS, MEDIA_TYPES, POST_TYPES, platformLabel } from "@/lib/social-posts/constants";
 import { PostAttachments } from "@/components/social-posts/post-attachments";
+import {
+  THUMBNAIL_ACCEPT,
+  prepareThumbnail,
+  removeThumbnailFile,
+  signedThumbnailUrls,
+  uploadThumbnail,
+  validateThumbnail,
+} from "@/lib/social-posts/thumbnail";
 import type { Tables } from "@/lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +90,11 @@ export function CreatePostDialog({
   const [open, setOpen] = useState(false);
   const [creditIds, setCreditIds] = useState<string[]>(() => post?.credits.map((c) => c.id) ?? []);
   const [saving, setSaving] = useState(false);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
+  // What the thumbnail box shows: a just-chosen file, else the saved image.
+  const [thumbPreview, setThumbPreview] = useState<string | null>(null);
+  const [removeThumb, setRemoveThumb] = useState(false);
 
   const {
     register,
@@ -106,9 +119,42 @@ export function CreatePostDialog({
   // Reset the form here (an event handler triggered by Dialog's own
   // trigger-click/close interactions) rather than in a useEffect keyed on
   // `open` — that would call setState synchronously inside an effect body.
+  function clearThumbnailChoice() {
+    setThumbPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setThumbFile(null);
+    setRemoveThumb(false);
+    if (thumbInputRef.current) thumbInputRef.current.value = "";
+  }
+
+  function handleThumbnailChosen(file: File | undefined) {
+    if (!file) return;
+    const problem = validateThumbnail(file);
+    if (problem) {
+      toast.error(problem);
+      if (thumbInputRef.current) thumbInputRef.current.value = "";
+      return;
+    }
+    setThumbPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setThumbFile(file);
+    setRemoveThumb(false);
+  }
+
+  async function showSavedThumbnail(path: string) {
+    const urls = await signedThumbnailUrls(createClient(), [path]);
+    setThumbPreview((prev) => prev ?? urls[path] ?? null);
+  }
+
   function handleOpenChange(next: boolean) {
     setOpen(next);
+    clearThumbnailChoice();
     if (!next) return;
+    if (post?.thumbnail_path) void showSavedThumbnail(post.thumbnail_path);
     if (post) {
       reset({
         platform: post.platform,
@@ -174,6 +220,36 @@ export function CreatePostDialog({
       if (creditError) toast.error(`Credits not saved: ${creditError.message}`);
     }
 
+    // Thumbnail: the post row exists now, so its id can name the file.
+    let savedPost = data;
+    if (thumbFile) {
+      try {
+        const path = await uploadThumbnail(supabase, data.id, await prepareThumbnail(thumbFile));
+        const { data: withThumb, error: thumbError } = await supabase
+          .from("social_posts")
+          .update({ thumbnail_path: path })
+          .eq("id", data.id)
+          .select()
+          .single();
+        if (thumbError || !withThumb) throw new Error(thumbError?.message ?? "Couldn't attach the image");
+        savedPost = withThumb;
+        if (post?.thumbnail_path) void removeThumbnailFile(supabase, post.thumbnail_path);
+      } catch (e) {
+        toast.error(`Thumbnail not saved: ${e instanceof Error ? e.message : "upload failed"}`);
+      }
+    } else if (removeThumb && post?.thumbnail_path) {
+      const { data: cleared } = await supabase
+        .from("social_posts")
+        .update({ thumbnail_path: null })
+        .eq("id", data.id)
+        .select()
+        .single();
+      if (cleared) {
+        savedPost = cleared;
+        void removeThumbnailFile(supabase, post.thumbnail_path);
+      }
+    }
+
     setSaving(false);
     toast.success(post ? "Post updated" : "Post added to the plan");
     logActivity(supabase, {
@@ -185,7 +261,7 @@ export function CreatePostDialog({
       entityType: "social_post",
       entityId: data.id,
     });
-    onSuccess?.(data, creditIds);
+    onSuccess?.(savedPost, creditIds);
     setOpen(false);
   }
 
@@ -198,6 +274,7 @@ export function CreatePostDialog({
       toast.error(error.message);
       return;
     }
+    if (post.thumbnail_path) void removeThumbnailFile(supabase, post.thumbnail_path);
     toast.success("Post deleted");
     logActivity(supabase, {
       actorId: profile.id,
@@ -312,6 +389,55 @@ export function CreatePostDialog({
                 </Select>
               )}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Thumbnail</Label>
+            <div className="flex items-center gap-3">
+              <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted text-xs text-muted-foreground">
+                {thumbPreview && !removeThumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={thumbPreview} alt="Post thumbnail preview" className="size-full object-cover" />
+                ) : (
+                  "No image"
+                )}
+              </div>
+              <div className="space-y-2">
+                <input
+                  ref={thumbInputRef}
+                  type="file"
+                  accept={THUMBNAIL_ACCEPT}
+                  className="sr-only"
+                  id="post-thumbnail"
+                  onChange={(e) => handleThumbnailChosen(e.target.files?.[0])}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => thumbInputRef.current?.click()}>
+                    {thumbPreview && !removeThumb ? "Replace image" : "Choose image"}
+                  </Button>
+                  {thumbPreview && !removeThumb && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (thumbFile) {
+                          clearThumbnailChoice();
+                          if (post?.thumbnail_path) void showSavedThumbnail(post.thumbnail_path);
+                        } else {
+                          setRemoveThumb(true);
+                        }
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Shown in this client&apos;s feed. JPG, PNG, WebP or GIF, up to 15MB.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">

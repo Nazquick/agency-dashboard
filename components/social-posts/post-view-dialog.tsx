@@ -1,5 +1,7 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
+import { signedThumbnailUrls } from "@/lib/social-posts/thumbnail";
 import { formatDateTime } from "@/lib/format/datetime";
 import { useState } from "react";
 import { mediaTypeBadgeClass, mediaTypeLabel, platformLabel, postTypeLabel } from "@/lib/social-posts/constants";
@@ -28,15 +30,28 @@ function formatPostAt(value: string): string {
 // see a post but never edit it (the client portal). No form, no mutations.
 export function PostViewDialog({ post, trigger }: { post: PostWithRelations; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+
+  async function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next && post.thumbnail_path) {
+      const urls = await signedThumbnailUrls(createClient(), [post.thumbnail_path]);
+      setThumbnailUrl(urls[post.thumbnail_path] ?? null);
+    }
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{post.caption || platformLabel(post.platform)}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {thumbnailUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={thumbnailUrl} alt="" className="mx-auto max-h-72 rounded-md object-contain" />
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{platformLabel(post.platform)}</Badge>
             <Badge variant="secondary">{postTypeLabel(post.post_type)}</Badge>

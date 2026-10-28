@@ -2,13 +2,14 @@
 
 import { formatDate, formatTime } from "@/lib/format/datetime";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, CalendarDays, LayoutGrid } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRealtimeClient, uniqueChannelName } from "@/lib/supabase/realtime-client";
 import { MEDIA_TYPES, mediaTypeHex, mediaTypeLabel, platformLabel } from "@/lib/social-posts/constants";
 import { flattenPostCredits } from "@/lib/social-posts/flatten";
 import { clientThemeFor } from "@/lib/social-posts/client-themes";
 import { ClientPostKpis } from "@/components/social-posts/client-post-kpis";
+import { PostFeed } from "@/components/social-posts/post-feed";
 import { CreatePostDialog, type PostWithRelations } from "@/components/social-posts/create-post-dialog";
 import { PostViewDialog } from "@/components/social-posts/post-view-dialog";
 import type { Tables } from "@/lib/types/database.types";
@@ -70,6 +71,7 @@ export function PostPlanCalendar({
   const [posts, setPosts] = useState(initialPosts);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [selectedClientId, setSelectedClientId] = useState(ALL_CLIENTS);
+  const [tab, setTab] = useState<"calendar" | "feed">("calendar");
 
   // The client-specific page already scopes itself to one client; the
   // team-wide page lets the user pick one with the dropdown.
@@ -170,31 +172,115 @@ export function PostPlanCalendar({
 
   const today = new Date();
 
+  const clientSelect = showClientFilter ? (
+    <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+      <SelectTrigger className="w-44" aria-label="Filter by client">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL_CLIENTS}>All clients</SelectItem>
+        {clients.map((c) => (
+          <SelectItem key={c.id} value={c.id}>
+            <span className="flex items-center gap-2">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full bg-muted-foreground/30"
+                style={{ backgroundColor: clientThemeFor(c.name)?.hex }}
+              />
+              {c.name.trim()}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  ) : null;
+
+  // A post opens in the edit dialog for the team and a read-only one in the
+  // client portal — wherever it is shown (calendar chip or feed tile).
+  function renderPostDialog(p: PostWithRelations, trigger: React.ReactNode) {
+    return readOnly ? (
+      <PostViewDialog key={p.id} post={p} trigger={trigger} />
+    ) : (
+      <CreatePostDialog
+        key={p.id}
+        post={p}
+        profiles={profiles}
+        clients={clients}
+        defaultClientId={activeClientId}
+        trigger={trigger}
+        onSuccess={mergeUpdatedPost}
+        onDelete={(id) => setPosts((prev) => prev.filter((post) => post.id !== id))}
+      />
+    );
+  }
+
+  const tabBar = (
+    <div className="inline-flex rounded-lg border bg-muted/40 p-0.5" role="tablist" aria-label="Post plan view">
+      {(
+        [
+          { value: "calendar", label: "Calendar", icon: CalendarDays },
+          { value: "feed", label: "Feed", icon: LayoutGrid },
+        ] as const
+      ).map(({ value, label, icon: Icon }) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          aria-selected={tab === value}
+          onClick={() => setTab(value)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            tab === value ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Icon className="size-4" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (tab === "feed") {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {tabBar}
+          {clientSelect}
+        </div>
+        <PostFeed
+          posts={visiblePosts}
+          clientName={clients.find((c) => c.id === activeClientId)?.name ?? fixedThemeClientName}
+          theme={theme}
+          needsClient={!readOnly && !activeClientId}
+          clients={clients}
+          onPickClient={setSelectedClientId}
+          renderPost={renderPostDialog}
+          addPost={
+            readOnly ? null : (
+              <CreatePostDialog
+                profiles={profiles}
+                clients={clients}
+                defaultDate={new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0)}
+                defaultClientId={activeClientId}
+                trigger={
+                  <Button size="sm">
+                    <Plus className="size-4" /> Add post
+                  </Button>
+                }
+                onSuccess={mergeUpdatedPost}
+              />
+            )
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {tabBar}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {showClientFilter && (
-            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-              <SelectTrigger className="w-44" aria-label="Filter by client">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_CLIENTS}>All clients</SelectItem>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full bg-muted-foreground/30"
-                        style={{ backgroundColor: clientThemeFor(c.name)?.hex }}
-                      />
-                      {c.name.trim()}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {clientSelect}
           <Button variant="outline" size="icon-sm" onClick={() => setMonth((m) => addMonths(m, -1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -313,20 +399,7 @@ export function PostPlanCalendar({
                         </span>
                       </button>
                     );
-                    return readOnly ? (
-                      <PostViewDialog key={p.id} post={p} trigger={chip} />
-                    ) : (
-                      <CreatePostDialog
-                        key={p.id}
-                        post={p}
-                        profiles={profiles}
-                        clients={clients}
-                        defaultClientId={activeClientId}
-                        trigger={chip}
-                        onSuccess={mergeUpdatedPost}
-                        onDelete={(id) => setPosts((prev) => prev.filter((post) => post.id !== id))}
-                      />
-                    );
+                    return renderPostDialog(p, chip);
                   })}
                 </div>
               </div>
