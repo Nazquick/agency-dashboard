@@ -9,11 +9,23 @@ import { signedThumbnailUrls } from "@/lib/social-posts/thumbnail";
 import { cropFromPost, type ThumbnailCrop } from "@/lib/social-posts/crop";
 import { CropFrame } from "@/components/social-posts/crop-frame";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ClientTheme } from "@/lib/social-posts/client-themes";
 import type { PostWithRelations } from "@/components/social-posts/create-post-dialog";
 import { cn } from "@/lib/utils";
 
 const TILE_DATE = { month: "short", day: "numeric" } as const;
+const ALL_MONTHS = "all";
+
+function monthKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(key: string): string {
+  const [year, month] = key.split("-").map(Number);
+  return formatDate(new Date(year, month - 1, 15), { month: "long", year: "numeric" });
+}
 
 function initial(name: string): string {
   return name.trim().charAt(0).toUpperCase() || "?";
@@ -100,7 +112,7 @@ function AdjustTile({
   );
 }
 
-// One client's feed: a 3-column grid in posting order, newest post top-left,
+// One client's feed: a 4-column grid in posting order, newest post top-left,
 // oldest at the bottom — what their profile will look like as posts go out.
 export function PostFeed({
   posts,
@@ -129,6 +141,7 @@ export function PostFeed({
 }) {
   const [now] = useState(() => Date.now());
   const [adjusting, setAdjusting] = useState(false);
+  const [month, setMonth] = useState(ALL_MONTHS);
   // Crops being edited right now; shown immediately, then saved shortly after
   // the user stops moving so a drag isn't one network call per pixel.
   const [overrides, setOverrides] = useState<Record<string, ThumbnailCrop>>({});
@@ -189,6 +202,15 @@ export function PostFeed({
 
   const hasThumbnails = sorted.some((p) => p.thumbnail_path);
 
+  // Months that have at least one post, newest first. A month that no longer
+  // has posts (another client picked, post deleted) falls back to all months.
+  const monthKeys = useMemo(() => [...new Set(sorted.map((p) => monthKey(p.post_at)))], [sorted]);
+  const activeMonth = month !== ALL_MONTHS && monthKeys.includes(month) ? month : ALL_MONTHS;
+  const shown = useMemo(
+    () => (activeMonth === ALL_MONTHS ? sorted : sorted.filter((p) => monthKey(p.post_at) === activeMonth)),
+    [sorted, activeMonth]
+  );
+
   const pathsKey = sorted
     .map((p) => p.thumbnail_path)
     .filter((p): p is string => Boolean(p))
@@ -229,7 +251,7 @@ export function PostFeed({
   const accent = theme?.hex;
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
@@ -244,7 +266,8 @@ export function PostFeed({
           <div>
             <h2 className="text-base font-semibold leading-tight">{name}</h2>
             <p className="text-xs text-muted-foreground">
-              {sorted.length} {sorted.length === 1 ? "post" : "posts"} · newest first
+              {shown.length} {shown.length === 1 ? "post" : "posts"}
+              {activeMonth !== ALL_MONTHS && ` in ${monthLabel(activeMonth)}`} · newest first
             </p>
           </div>
         </div>
@@ -258,13 +281,29 @@ export function PostFeed({
         </div>
       </div>
 
+      {sorted.length > 0 && (
+        <Select value={activeMonth} onValueChange={setMonth}>
+          <SelectTrigger className="w-48" aria-label="Show posts from month">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_MONTHS}>All months</SelectItem>
+            {monthKeys.map((key) => (
+              <SelectItem key={key} value={key}>
+                {monthLabel(key)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
       {adjusting && (
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
           Drag a photo to move it, scroll or use + / − to zoom. Changes save automatically. Double-click
           a post to open it.
         </p>
       )}
-      {!adjusting && sorted.length > 0 && (
+      {!adjusting && shown.length > 0 && (
         <p className="text-xs text-muted-foreground">Double-click a post to open it.</p>
       )}
 
@@ -274,10 +313,10 @@ export function PostFeed({
         </div>
       ) : (
         <div
-          className="grid grid-cols-3 gap-0.5 border-t-2 pt-0.5 sm:gap-1 sm:pt-1"
+          className="grid grid-cols-4 gap-0.5 border-t-2 pt-0.5 sm:gap-1 sm:pt-1"
           style={accent ? { borderColor: accent } : undefined}
         >
-          {sorted.map((post) => {
+          {shown.map((post) => {
             const thumbnailUrl = post.thumbnail_path ? urls[post.thumbnail_path] : undefined;
             const crop = overrides[post.id] ?? cropFromPost(post);
             const scheduled = new Date(post.post_at).getTime() > now;
