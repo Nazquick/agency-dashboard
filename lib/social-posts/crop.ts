@@ -43,15 +43,21 @@ export function clampCrop(crop: ThumbnailCrop, aspect: number): ThumbnailCrop {
   };
 }
 
-// Percentages for an absolutely positioned <img> inside the tile.
-export function cropLayout(crop: ThumbnailCrop, aspect: number) {
+// Where the picture sits inside the tile, as fractions of the tile side.
+export function cropRect(crop: ThumbnailCrop, aspect: number) {
   const c = clampCrop(crop, aspect);
   const { w, h } = imageSize(c.zoom, aspect);
+  return { width: w, height: h, left: 0.5 - c.x * w, top: 0.5 - c.y * h };
+}
+
+// Percentages for an absolutely positioned <img> inside the tile.
+export function cropLayout(crop: ThumbnailCrop, aspect: number) {
+  const r = cropRect(crop, aspect);
   return {
-    width: `${w * 100}%`,
-    height: `${h * 100}%`,
-    left: `${(0.5 - c.x * w) * 100}%`,
-    top: `${(0.5 - c.y * h) * 100}%`,
+    width: `${r.width * 100}%`,
+    height: `${r.height * 100}%`,
+    left: `${r.left * 100}%`,
+    top: `${r.top * 100}%`,
   };
 }
 

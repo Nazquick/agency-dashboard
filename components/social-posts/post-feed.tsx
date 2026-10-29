@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Layers, Play } from "lucide-react";
+import { Download, Layers, Play } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/format/datetime";
 import { mediaTypeHex, platformLabel } from "@/lib/social-posts/constants";
 import { signedThumbnailUrls } from "@/lib/social-posts/thumbnail";
 import { cropFromPost, type ThumbnailCrop } from "@/lib/social-posts/crop";
+import { downloadBlob, renderFeedGrid } from "@/lib/social-posts/export-grid";
 import { CropFrame } from "@/components/social-posts/crop-frame";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,7 +31,10 @@ function monthKey(iso: string): string {
 
 function monthLabel(key: string): string {
   const [year, month] = key.split("-").map(Number);
-  return formatDate(new Date(year, month - 1, 15), { month: "long", year: "numeric" });
+  return formatDate(new Date(year, month - 1, 15), {
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function initial(name: string): string {
@@ -112,7 +117,13 @@ function AdjustTile({
   }
   return (
     <div className="relative aspect-square ring-2 ring-primary/50">
-      <CropFrame src={thumbnailUrl} crop={crop} onChange={onChange} controls="buttons" className="absolute inset-0" />
+      <CropFrame
+        src={thumbnailUrl}
+        crop={crop}
+        onChange={onChange}
+        controls="buttons"
+        className="absolute inset-0"
+      />
     </div>
   );
 }
@@ -148,6 +159,7 @@ export function PostFeed({
   const [adjusting, setAdjusting] = useState(false);
   const [month, setMonth] = useState(ALL_MONTHS);
   const [page, setPage] = useState(0);
+  const [exporting, setExporting] = useState(false);
   // Crops being edited right now; shown immediately, then saved shortly after
   // the user stops moving so a drag isn't one network call per pixel.
   const [overrides, setOverrides] = useState<Record<string, ThumbnailCrop>>({});
@@ -220,6 +232,31 @@ export function PostFeed({
   const activePage = Math.min(page, pageCount - 1);
   const shown = inMonth.slice(activePage * PAGE_SIZE, (activePage + 1) * PAGE_SIZE);
 
+  // Saves the whole selection (the chosen month, every page of it) as one image.
+  async function exportGrid() {
+    setExporting(true);
+    try {
+      const blob = await renderFeedGrid(
+        inMonth.map((post) => ({
+          imageUrl: post.thumbnail_path ? urls[post.thumbnail_path] : undefined,
+          crop: overrides[post.id] ?? cropFromPost(post),
+          caption: post.caption || platformLabel(post.platform),
+          hex: mediaTypeHex(post.media_type),
+        }))
+      );
+      const slug = (clientName ?? "feed")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      downloadBlob(blob, `${slug || "feed"}-grid-${activeMonth === ALL_MONTHS ? "all" : activeMonth}.png`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not export the grid.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const pathsKey = sorted
     .map((p) => p.thumbnail_path)
     .filter((p): p is string => Boolean(p))
@@ -239,7 +276,9 @@ export function PostFeed({
   if (needsClient) {
     return (
       <div className="mx-auto max-w-xl space-y-4 rounded-lg border border-dashed bg-card p-8 text-center">
-        <p className="text-sm text-muted-foreground">Every client has their own feed. Choose one to see it.</p>
+        <p className="text-sm text-muted-foreground">
+          Every client has their own feed. Choose one to see it.
+        </p>
         <div className="flex flex-wrap justify-center gap-2">
           {clients.map((c) => (
             <button
@@ -282,7 +321,12 @@ export function PostFeed({
         </div>
         <div className="flex items-center gap-2">
           {canAdjust && hasThumbnails && (
-            <Button type="button" size="sm" variant={adjusting ? "default" : "outline"} onClick={toggleAdjusting}>
+            <Button
+              type="button"
+              size="sm"
+              variant={adjusting ? "default" : "outline"}
+              onClick={toggleAdjusting}
+            >
               {adjusting ? "Done" : "Adjust crop"}
             </Button>
           )}
@@ -291,31 +335,36 @@ export function PostFeed({
       </div>
 
       {sorted.length > 0 && (
-        <Select
-          value={activeMonth}
-          onValueChange={(value) => {
-            setMonth(value);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger className="w-48" aria-label="Show posts from month">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_MONTHS}>All months</SelectItem>
-            {monthKeys.map((key) => (
-              <SelectItem key={key} value={key}>
-                {monthLabel(key)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={activeMonth}
+            onValueChange={(value) => {
+              setMonth(value);
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="w-48" aria-label="Show posts from month">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_MONTHS}>All months</SelectItem>
+              {monthKeys.map((key) => (
+                <SelectItem key={key} value={key}>
+                  {monthLabel(key)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="button" size="sm" variant="outline" onClick={exportGrid} disabled={exporting}>
+            <Download className="size-4" /> {exporting ? "Preparing…" : "Download grid"}
+          </Button>
+        </div>
       )}
 
       {adjusting && (
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-          Drag a photo to move it, scroll or use + / − to zoom. Changes save automatically. Double-click
-          a post to open it.
+          Drag a photo to move it, scroll or use + / − to zoom. Changes save automatically. Double-click a
+          post to open it.
         </p>
       )}
       {!adjusting && shown.length > 0 && (
@@ -359,7 +408,13 @@ export function PostFeed({
 
       {pageCount > 1 && (
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <Button type="button" size="sm" variant="outline" disabled={activePage === 0} onClick={() => setPage(activePage - 1)}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={activePage === 0}
+            onClick={() => setPage(activePage - 1)}
+          >
             Newer
           </Button>
           <span>
