@@ -16,6 +16,11 @@ import { cn } from "@/lib/utils";
 
 const TILE_DATE = { month: "short", day: "numeric" } as const;
 const ALL_MONTHS = "all";
+// One page of the feed: 3 columns x 6 rows, sized to fit on screen at once.
+const PAGE_SIZE = 16;
+// The square tiles make the grid's height twice its width (6 rows, 3 columns),
+// so the width is capped to leave room for the controls above it.
+const FEED_MAX_WIDTH = "clamp(18rem, calc((100dvh - 22rem) / 2), 42rem)";
 
 function monthKey(iso: string): string {
   const d = new Date(iso);
@@ -112,7 +117,7 @@ function AdjustTile({
   );
 }
 
-// One client's feed: a 4-column grid in posting order, newest post top-left,
+// One client's feed: a 3-column grid in posting order, newest post top-left,
 // oldest at the bottom — what their profile will look like as posts go out.
 export function PostFeed({
   posts,
@@ -142,6 +147,7 @@ export function PostFeed({
   const [now] = useState(() => Date.now());
   const [adjusting, setAdjusting] = useState(false);
   const [month, setMonth] = useState(ALL_MONTHS);
+  const [page, setPage] = useState(0);
   // Crops being edited right now; shown immediately, then saved shortly after
   // the user stops moving so a drag isn't one network call per pixel.
   const [overrides, setOverrides] = useState<Record<string, ThumbnailCrop>>({});
@@ -206,10 +212,13 @@ export function PostFeed({
   // has posts (another client picked, post deleted) falls back to all months.
   const monthKeys = useMemo(() => [...new Set(sorted.map((p) => monthKey(p.post_at)))], [sorted]);
   const activeMonth = month !== ALL_MONTHS && monthKeys.includes(month) ? month : ALL_MONTHS;
-  const shown = useMemo(
+  const inMonth = useMemo(
     () => (activeMonth === ALL_MONTHS ? sorted : sorted.filter((p) => monthKey(p.post_at) === activeMonth)),
     [sorted, activeMonth]
   );
+  const pageCount = Math.max(1, Math.ceil(inMonth.length / PAGE_SIZE));
+  const activePage = Math.min(page, pageCount - 1);
+  const shown = inMonth.slice(activePage * PAGE_SIZE, (activePage + 1) * PAGE_SIZE);
 
   const pathsKey = sorted
     .map((p) => p.thumbnail_path)
@@ -251,7 +260,7 @@ export function PostFeed({
   const accent = theme?.hex;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto space-y-4" style={{ maxWidth: FEED_MAX_WIDTH }}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
@@ -266,7 +275,7 @@ export function PostFeed({
           <div>
             <h2 className="text-base font-semibold leading-tight">{name}</h2>
             <p className="text-xs text-muted-foreground">
-              {shown.length} {shown.length === 1 ? "post" : "posts"}
+              {inMonth.length} {inMonth.length === 1 ? "post" : "posts"}
               {activeMonth !== ALL_MONTHS && ` in ${monthLabel(activeMonth)}`} · newest first
             </p>
           </div>
@@ -282,7 +291,13 @@ export function PostFeed({
       </div>
 
       {sorted.length > 0 && (
-        <Select value={activeMonth} onValueChange={setMonth}>
+        <Select
+          value={activeMonth}
+          onValueChange={(value) => {
+            setMonth(value);
+            setPage(0);
+          }}
+        >
           <SelectTrigger className="w-48" aria-label="Show posts from month">
             <SelectValue />
           </SelectTrigger>
@@ -313,7 +328,7 @@ export function PostFeed({
         </div>
       ) : (
         <div
-          className="grid grid-cols-4 gap-0.5 border-t-2 pt-0.5 sm:gap-1 sm:pt-1"
+          className="grid grid-cols-3 gap-0.5 border-t-2 pt-0.5 sm:gap-1 sm:pt-1"
           style={accent ? { borderColor: accent } : undefined}
         >
           {shown.map((post) => {
@@ -339,6 +354,26 @@ export function PostFeed({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <Button type="button" size="sm" variant="outline" disabled={activePage === 0} onClick={() => setPage(activePage - 1)}>
+            Newer
+          </Button>
+          <span>
+            {activePage * PAGE_SIZE + 1}–{activePage * PAGE_SIZE + shown.length} of {inMonth.length}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={activePage >= pageCount - 1}
+            onClick={() => setPage(activePage + 1)}
+          >
+            Older
+          </Button>
         </div>
       )}
     </div>
