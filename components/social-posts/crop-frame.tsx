@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 const ZOOM_STEP = 0.25;
 
-// A square tile showing an image with a given crop. With `onChange` it is
+// A 3:4 tile showing an image with a given crop. With `onChange` it is
 // interactive: drag to move the picture, scroll wheel to zoom (and +/- buttons
 // when controls="buttons"). Without it, it is a plain read-only render, so the
 // feed tile and the editor can never disagree about how a crop looks.
@@ -27,7 +27,7 @@ export function CropFrame({
   onChange,
   onAspect,
   controls = "none",
-  className = "relative aspect-square",
+  className = "relative aspect-[3/4]",
 }: {
   src: string;
   crop: ThumbnailCrop;
@@ -76,8 +76,13 @@ export function CropFrame({
     const from = dragFrom.current;
     if (!from) return;
     const { crop: c, aspect: a, onChange: change } = latest.current;
-    const size = e.currentTarget.getBoundingClientRect().width || 1;
-    const next = panCrop(c, a, (e.clientX - from.x) / size, (e.clientY - from.y) / size);
+    const box = e.currentTarget.getBoundingClientRect();
+    const next = panCrop(
+      c,
+      a,
+      (e.clientX - from.x) / (box.width || 1),
+      (e.clientY - from.y) / (box.height || 1)
+    );
     dragFrom.current = { x: e.clientX, y: e.clientY };
     latest.current.crop = next;
     change?.(next);
@@ -117,7 +122,10 @@ export function CropFrame({
           }
           setLoaded(true);
         }}
-        className={cn("absolute max-w-none select-none transition-opacity", loaded ? "opacity-100" : "opacity-0")}
+        className={cn(
+          "absolute max-w-none select-none transition-opacity",
+          loaded ? "opacity-100" : "opacity-0"
+        )}
         style={cropLayout(crop, aspect)}
       />
       {interactive && controls === "buttons" && (
@@ -156,7 +164,7 @@ export function CropFrame({
   );
 }
 
-// The crop editor used in the post dialog: a draggable square plus a zoom
+// The crop editor used in the post dialog: a draggable 3:4 frame plus a zoom
 // slider and reset, always showing exactly what the feed tile will show.
 export function CropEditor({
   src,
@@ -170,7 +178,13 @@ export function CropEditor({
   const [aspect, setAspect] = useState(1);
   return (
     <div className="w-44 space-y-2">
-      <CropFrame src={src} crop={crop} onChange={onChange} onAspect={setAspect} className="relative aspect-square rounded-md border" />
+      <CropFrame
+        src={src}
+        crop={crop}
+        onChange={onChange}
+        onAspect={setAspect}
+        className="relative aspect-[3/4] rounded-md border"
+      />
       <div className="flex items-center gap-2">
         <Minus className="size-3.5 shrink-0 text-muted-foreground" />
         <input

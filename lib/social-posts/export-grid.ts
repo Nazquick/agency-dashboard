@@ -1,7 +1,8 @@
 import { cropRect, type ThumbnailCrop } from "@/lib/social-posts/crop";
 
 const COLUMNS = 3;
-const TILE = 360;
+const TILE_W = 360;
+const TILE_H = (TILE_W * 4) / 3; // portrait 3:4, like the on-screen tiles
 const GAP = 4;
 const BACKGROUND = "#ffffff";
 
@@ -51,15 +52,15 @@ function wrapLines(
 
 function drawCaptionCard(ctx: CanvasRenderingContext2D, x: number, y: number, item: GridExportItem) {
   ctx.fillStyle = `${item.hex}22`;
-  ctx.fillRect(x, y, TILE, TILE);
+  ctx.fillRect(x, y, TILE_W, TILE_H);
   ctx.fillStyle = item.hex;
   ctx.font = "600 28px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const lines = wrapLines(ctx, item.caption, TILE - 48, 7);
+  const lines = wrapLines(ctx, item.caption, TILE_W - 48, 8);
   const lineHeight = 36;
-  const top = y + TILE / 2 - ((lines.length - 1) * lineHeight) / 2;
-  lines.forEach((l, i) => ctx.fillText(l, x + TILE / 2, top + i * lineHeight));
+  const top = y + TILE_H / 2 - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, x + TILE_W / 2, top + i * lineHeight));
 }
 
 // Draws the feed exactly as it looks on screen (3 columns, first item top-left,
@@ -68,8 +69,8 @@ function drawCaptionCard(ctx: CanvasRenderingContext2D, x: number, y: number, it
 export async function renderFeedGrid(items: GridExportItem[]): Promise<Blob> {
   const rows = Math.max(1, Math.ceil(items.length / COLUMNS));
   const canvas = document.createElement("canvas");
-  canvas.width = COLUMNS * TILE + (COLUMNS - 1) * GAP;
-  canvas.height = rows * TILE + (rows - 1) * GAP;
+  canvas.width = COLUMNS * TILE_W + (COLUMNS - 1) * GAP;
+  canvas.height = rows * TILE_H + (rows - 1) * GAP;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas is not available in this browser.");
 
@@ -79,8 +80,8 @@ export async function renderFeedGrid(items: GridExportItem[]): Promise<Blob> {
   const bitmaps = await Promise.all(items.map((i) => (i.imageUrl ? loadBitmap(i.imageUrl) : null)));
 
   items.forEach((item, index) => {
-    const x = (index % COLUMNS) * (TILE + GAP);
-    const y = Math.floor(index / COLUMNS) * (TILE + GAP);
+    const x = (index % COLUMNS) * (TILE_W + GAP);
+    const y = Math.floor(index / COLUMNS) * (TILE_H + GAP);
     const bitmap = bitmaps[index];
     if (!bitmap) {
       drawCaptionCard(ctx, x, y, item);
@@ -89,9 +90,9 @@ export async function renderFeedGrid(items: GridExportItem[]): Promise<Blob> {
     const r = cropRect(item.crop, bitmap.width / bitmap.height);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(x, y, TILE, TILE);
+    ctx.rect(x, y, TILE_W, TILE_H);
     ctx.clip();
-    ctx.drawImage(bitmap, x + r.left * TILE, y + r.top * TILE, r.width * TILE, r.height * TILE);
+    ctx.drawImage(bitmap, x + r.left * TILE_W, y + r.top * TILE_H, r.width * TILE_W, r.height * TILE_H);
     ctx.restore();
     bitmap.close();
   });

@@ -18,11 +18,18 @@ import { cn } from "@/lib/utils";
 
 const TILE_DATE = { month: "short", day: "numeric" } as const;
 const ALL_MONTHS = "all";
-// One page of the feed: 3 columns x 6 rows, sized to fit on screen at once.
-const PAGE_SIZE = 16;
-// The square tiles make the grid's height twice its width (6 rows, 3 columns),
-// so the width is capped to leave room for the controls above it.
-const FEED_MAX_WIDTH = "clamp(18rem, calc((100dvh - 22rem) / 2), 42rem)";
+// How many posts to show at once. The default (16) is 3 columns x 6 rows,
+// sized to fit on screen without scrolling; more than that scrolls.
+const SHOW_OPTIONS = [9, 16, 30, "all"] as const;
+type ShowCount = (typeof SHOW_OPTIONS)[number];
+const DEFAULT_SHOW: ShowCount = 16;
+// The tiles are portrait 3:4, so a grid of N rows of three is N * 4/9 as tall
+// as it is wide. The width is capped so that the rows fit under the controls
+// above it; the 30 / All views are sized like the 16 one and scroll.
+function feedMaxWidth(show: ShowCount): string {
+  const rows = show === 9 ? 3 : 6;
+  return `clamp(12rem, calc((100dvh - 22rem) * 9 / ${rows * 4}), 42rem)`;
+}
 
 function monthKey(iso: string): string {
   const d = new Date(iso);
@@ -58,7 +65,7 @@ function FeedTile({
   return (
     <button
       type="button"
-      className="group relative block aspect-square w-full overflow-hidden bg-muted text-left"
+      className="group relative block aspect-[3/4] w-full overflow-hidden bg-muted text-left"
       aria-label={`${post.caption || platformLabel(post.platform)} — ${formatDate(post.post_at, TILE_DATE)}`}
     >
       {thumbnailUrl ? (
@@ -116,7 +123,7 @@ function AdjustTile({
     );
   }
   return (
-    <div className="relative aspect-square ring-2 ring-primary/50">
+    <div className="relative aspect-[3/4] ring-2 ring-primary/50">
       <CropFrame
         src={thumbnailUrl}
         crop={crop}
@@ -159,6 +166,7 @@ export function PostFeed({
   const [adjusting, setAdjusting] = useState(false);
   const [month, setMonth] = useState(ALL_MONTHS);
   const [page, setPage] = useState(0);
+  const [show, setShow] = useState<ShowCount>(DEFAULT_SHOW);
   const [exporting, setExporting] = useState(false);
   // Crops being edited right now; shown immediately, then saved shortly after
   // the user stops moving so a drag isn't one network call per pixel.
@@ -228,9 +236,10 @@ export function PostFeed({
     () => (activeMonth === ALL_MONTHS ? sorted : sorted.filter((p) => monthKey(p.post_at) === activeMonth)),
     [sorted, activeMonth]
   );
-  const pageCount = Math.max(1, Math.ceil(inMonth.length / PAGE_SIZE));
+  const pageSize = show === "all" ? Math.max(1, inMonth.length) : show;
+  const pageCount = Math.max(1, Math.ceil(inMonth.length / pageSize));
   const activePage = Math.min(page, pageCount - 1);
-  const shown = inMonth.slice(activePage * PAGE_SIZE, (activePage + 1) * PAGE_SIZE);
+  const shown = inMonth.slice(activePage * pageSize, (activePage + 1) * pageSize);
 
   // Saves the whole selection (the chosen month, every page of it) as one image.
   async function exportGrid() {
@@ -299,7 +308,7 @@ export function PostFeed({
   const accent = theme?.hex;
 
   return (
-    <div className="mx-auto space-y-4" style={{ maxWidth: FEED_MAX_WIDTH }}>
+    <div className="mx-auto space-y-4" style={{ maxWidth: feedMaxWidth(show) }}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
@@ -361,6 +370,35 @@ export function PostFeed({
         </div>
       )}
 
+      {sorted.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>Show</span>
+          <div
+            className="inline-flex rounded-lg border bg-muted/40 p-0.5"
+            role="group"
+            aria-label="Posts to show"
+          >
+            {SHOW_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={show === option}
+                onClick={() => {
+                  setShow(option);
+                  setPage(0);
+                }}
+                className={cn(
+                  "rounded-md px-3 py-1 text-sm font-medium transition-colors",
+                  show === option ? "bg-background text-foreground shadow-sm" : "hover:text-foreground"
+                )}
+              >
+                {option === "all" ? "All" : option}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {adjusting && (
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
           Drag a photo to move it, scroll or use + / − to zoom. Changes save automatically. Double-click a
@@ -418,7 +456,7 @@ export function PostFeed({
             Newer
           </Button>
           <span>
-            {activePage * PAGE_SIZE + 1}–{activePage * PAGE_SIZE + shown.length} of {inMonth.length}
+            {activePage * pageSize + 1}–{activePage * pageSize + shown.length} of {inMonth.length}
           </span>
           <Button
             type="button"
